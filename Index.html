@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Password Generator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f2f2f7;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+
+    .card {
+        background: white;
+        padding: 24px 28px;
+        border-radius: 14px;
+        width: 320px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.12);
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 1.3em;
+        margin-bottom: 20px;
+    }
+
+    select, button {
+        font-size: 1em;
+        padding: 10px;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    button {
+        background: #007aff;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    button.secondary {
+        background: #e5e5ea;
+        color: #000;
+    }
+
+    button:hover {
+        background: #005fd1;
+    }
+
+    button.secondary:hover {
+        background: #d1d1d6;
+    }
+
+    .password {
+        margin-top: 18px;
+        padding: 14px;
+        background: #f9f9fb;
+        border-radius: 10px;
+        font-family: monospace;
+        font-size: 1.1em;
+        user-select: all;
+        word-break: break-word;
+    }
+
+    .hint {
+        font-size: .8em;
+        color: #666;
+        margin-top: 6px;
+        min-height: 1em;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <h1>Password Generator</h1>
+
+    <select id="length">
+        <option value="8">8 characters</option>
+        <option value="12" selected>12 characters</option>
+        <option value="15">15 characters</option>
+    </select>
+
+    <button onclick="generate()">Generate</button>
+
+    <div class="password" id="password"></div>
+
+    <button class="secondary" onclick="copyPassword()">Copy</button>
+    <div class="hint" id="hint"></div>
+</div>
+
+<script>
+const WORDS = [
+    "river","planet","forest","silver","cloud",
+    "matrix","carbon","delta","fusion","lunar",
+    "solar","amber","signal","vector","neuron"
+];
+
+const NUMBERS = "123456789";
+const SYMBOLS = "*+-=?!@$";
+
+function pick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function generate() {
+    const length = parseInt(document.getElementById("length").value, 10);
+    let word1 = pick(WORDS);
+    let word2 = pick(WORDS);
+
+    // Capitalize first letter of one word
+    if (Math.random() < 0.5) {
+        word1 = word1[0].toUpperCase() + word1.slice(1);
+    } else {
+        word2 = word2[0].toUpperCase() + word2.slice(1);
+    }
+
+    const number = pick(NUMBERS);
+    const symbol = pick(SYMBOLS);
+
+    let password;
+
+    if (length === 8) {
+        // 3 + 3 + 1 + 1 = 8
+        password =
+            word1.slice(0, 3) +
+            word2.slice(0, 3) +
+            number +
+            symbol;
+    } else {
+        // 12 / 15: full words must fit naturally
+        const maxWordLength = length - 2;
+        let attempts = 0;
+
+        while ((word1.length + word2.length) > maxWordLength && attempts < 50) {
+            word1 = pick(WORDS);
+            word2 = pick(WORDS);
+
+            if (Math.random() < 0.5) {
+                word1 = word1[0].toUpperCase() + word1.slice(1);
+            } else {
+                word2 = word2[0].toUpperCase() + word2.slice(1);
+            }
+            attempts++;
+        }
+
+        password = word1 + word2 + number + symbol;
+    }
+
+    document.getElementById("password").textContent = password;
+    document.getElementById("hint").textContent = "";
+}
+
+function copyPassword() {
+    const password = document.getElementById("password").textContent;
+    if (!password) return;
+
+    navigator.clipboard.writeText(password).then(() => {
+        const hint = document.getElementById("hint");
+        hint.textContent = "Copied!";
+        setTimeout(() => hint.textContent = "", 1200);
+    });
+}
+</script>
+
+</body>
+</html>
