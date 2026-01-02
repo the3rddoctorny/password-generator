@@ -169,6 +169,12 @@ function copyPassword() {
         setTimeout(() => hint.textContent = "", 1200);
     });
 }
+
+// Auto-generate on load
+window.addEventListener("load", generate);
+
+// Auto-regenerate when length changes
+document.getElementById("length").addEventListener("change", generate);
 </script>
 
 </body>
