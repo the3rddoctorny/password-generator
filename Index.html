@@ -6,9 +6,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+    :root {
+        --bg: #f2f2f7;
+        --card: #ffffff;
+        --text: #000;
+        --muted: #666;
+        --accent: #007aff;
+        --secondary: #e5e5ea;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #1c1c1e;
+            --card: #2c2c2e;
+            --text: #fff;
+            --muted: #aaa;
+            --accent: #0a84ff;
+            --secondary: #3a3a3c;
+        }
+    }
+
     body {
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        background: #f2f2f7;
+        background: var(--bg);
+        color: var(--text);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -17,51 +38,58 @@
     }
 
     .card {
-        background: white;
+        background: var(--card);
         padding: 24px 28px;
         border-radius: 14px;
-        width: 320px;
-        box-shadow: 0 10px 30px rgba(0,0,0,.12);
+        width: 340px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.25);
         text-align: center;
     }
 
     h1 {
         font-size: 1.3em;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
     }
 
-    select, button {
+    select, button, label {
         font-size: 1em;
-        padding: 10px;
         width: 100%;
         margin-top: 10px;
     }
 
-    button {
-        background: #007aff;
-        color: white;
-        border: none;
+    select, button {
+        padding: 10px;
         border-radius: 10px;
+        border: none;
+    }
+
+    button {
+        background: var(--accent);
+        color: white;
         cursor: pointer;
     }
 
     button.secondary {
-        background: #e5e5ea;
-        color: #000;
+        background: var(--secondary);
+        color: var(--text);
     }
 
-    button:hover {
-        background: #005fd1;
+    .options {
+        text-align: left;
+        margin-top: 12px;
+        font-size: .9em;
     }
 
-    button.secondary:hover {
-        background: #d1d1d6;
+    .options label {
+        display: block;
+        margin-top: 6px;
+        cursor: pointer;
     }
 
     .password {
         margin-top: 18px;
         padding: 14px;
-        background: #f9f9fb;
+        background: var(--secondary);
         border-radius: 10px;
         font-family: monospace;
         font-size: 1.1em;
@@ -71,9 +99,16 @@
 
     .hint {
         font-size: .8em;
-        color: #666;
+        color: var(--muted);
         margin-top: 6px;
         min-height: 1em;
+    }
+
+    .entropy {
+        font-size: .75em;
+        color: var(--muted);
+        margin-top: 10px;
+        text-align: left;
     }
 </style>
 </head>
@@ -89,12 +124,29 @@
         <option value="15">15 characters</option>
     </select>
 
+    <div class="options">
+        <label>
+            <input type="checkbox" id="separator">
+            Use separator (-) between words
+        </label>
+
+        <label>
+            Placement:
+            <select id="placement">
+                <option value="end" selected>Number & symbol at end</option>
+                <option value="middle">Between words</option>
+            </select>
+        </label>
+    </div>
+
     <button onclick="generate()">Generate</button>
 
     <div class="password" id="password"></div>
 
     <button class="secondary" onclick="copyPassword()">Copy</button>
     <div class="hint" id="hint"></div>
+
+    <div class="entropy" id="entropy"></div>
 </div>
 
 <script>
@@ -111,52 +163,50 @@ function pick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function estimateEntropy(length) {
+    const poolSize = 26 + 26 + 9 + 8; // lower + upper + numbers + symbols
+    return Math.round(length * Math.log2(poolSize));
+}
+
 function generate() {
     const length = parseInt(document.getElementById("length").value, 10);
-    let word1 = pick(WORDS);
-    let word2 = pick(WORDS);
+    const useSeparator = document.getElementById("separator").checked;
+    const placement = document.getElementById("placement").value;
 
-    // Capitalize first letter of one word
+    let w1 = pick(WORDS);
+    let w2 = pick(WORDS);
+
+    // Capitalize one word
     if (Math.random() < 0.5) {
-        word1 = word1[0].toUpperCase() + word1.slice(1);
+        w1 = w1[0].toUpperCase() + w1.slice(1);
     } else {
-        word2 = word2[0].toUpperCase() + word2.slice(1);
+        w2 = w2[0].toUpperCase() + w2.slice(1);
     }
 
-    const number = pick(NUMBERS);
-    const symbol = pick(SYMBOLS);
+    const num = pick(NUMBERS);
+    const sym = pick(SYMBOLS);
+    const sep = useSeparator ? "-" : "";
 
     let password;
 
     if (length === 8) {
-        // 3 + 3 + 1 + 1 = 8
         password =
-            word1.slice(0, 3) +
-            word2.slice(0, 3) +
-            number +
-            symbol;
+            w1.slice(0, 3) +
+            w2.slice(0, 3) +
+            num +
+            sym;
     } else {
-        // 12 / 15: full words must fit naturally
-        const maxWordLength = length - 2;
-        let attempts = 0;
-
-        while ((word1.length + word2.length) > maxWordLength && attempts < 50) {
-            word1 = pick(WORDS);
-            word2 = pick(WORDS);
-
-            if (Math.random() < 0.5) {
-                word1 = word1[0].toUpperCase() + word1.slice(1);
-            } else {
-                word2 = word2[0].toUpperCase() + word2.slice(1);
-            }
-            attempts++;
+        if (placement === "middle") {
+            password = w1 + num + sym + sep + w2;
+        } else {
+            password = w1 + sep + w2 + num + sym;
         }
-
-        password = word1 + word2 + number + symbol;
     }
 
     document.getElementById("password").textContent = password;
     document.getElementById("hint").textContent = "";
+    document.getElementById("entropy").textContent =
+        `Length: ${password.length} • Classes: upper, lower, number, symbol • ~${estimateEntropy(password.length)} bits entropy`;
 }
 
 function copyPassword() {
@@ -170,11 +220,10 @@ function copyPassword() {
     });
 }
 
-// Auto-generate on load
 window.addEventListener("load", generate);
-
-// Auto-regenerate when length changes
 document.getElementById("length").addEventListener("change", generate);
+document.getElementById("separator").addEventListener("change", generate);
+document.getElementById("placement").addEventListener("change", generate);
 </script>
 
 </body>
