@@ -196,6 +196,8 @@ function generate() {
     const num = pick(NUMBERS);
     const sym = pick(SYMBOLS);
     const sep = useSeparator ? "-" : "";
+    const extra = useSeparator ? 1 : 0;
+
 
     let password;
 
@@ -207,9 +209,9 @@ function generate() {
             sym;
     } else {
         if (placement === "middle") {
-            password = w1 + num + sym + sep + w2;
+            password = (w1 + num + sym + sep + w2).slice(0, length);
         } else {
-            password = w1 + sep + w2 + num + sym;
+            password = (w1 + sep + w2 + num + sym).slice(0, length);
         }
     }
 
