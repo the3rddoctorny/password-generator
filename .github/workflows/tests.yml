@@ -36,12 +36,10 @@ jobs:
         with:
           name: selenium-screenshots
           path: screenshots/
-jobs:
   tests:
     name: Accessibility & UI Tests
     runs-on: ubuntu-latest
 
-jobs:
   ui-tests:
     name: UI Tests
     runs-on: ubuntu-latest
