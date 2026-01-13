@@ -47,6 +47,8 @@ def test_password_rules_hold_across_multiple_generations(driver):
             assert not any(c in AMBIGUOUS for c in pwd), f"Ambiguous char: {pwd}"
 
 def test_copy_button_shows_feedback(driver):
+    assert "Site not found" not in self.driver.title, "GitHub Pages is serving a 404"
+
     page = PasswordGeneratorPage(driver).open()
     page.set_length(12).generate()
 
