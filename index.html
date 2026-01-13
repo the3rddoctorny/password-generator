@@ -12,7 +12,7 @@
         --card: #ffffff;
         --text: #000;
         --muted: #666;
-        --accent: #007aff;
+        --accent: #005fcc;
         --secondary: #e5e5ea;
     }
 
@@ -123,9 +123,10 @@
 
 <body>
 
+<main>
 <div class="card">
     <h1>Password Generator</h1>
-
+    <label for="length">Password length</label>
     <select id="length">
         <option value="8">8 characters</option>
         <option value="12" selected>12 characters</option>
@@ -149,7 +150,7 @@
 <div class="entropy" id="entropy"></div>
 <div class="version">v1.3</div>
 </div>
-
+</main>
 
 <script>
 const WORDS = [
