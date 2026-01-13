@@ -43,3 +43,34 @@ def test_password_rules_hold_across_multiple_generations(driver):
             assert any(c in SYMBOLS for c in pwd), f"No symbol: {pwd}"
             assert not any(c in AMBIGUOUS for c in pwd), f"Ambiguous char: {pwd}"
 
+def test_copy_button_shows_feedback(driver):
+    page = PasswordGeneratorPage(driver).open()
+    page.set_length(12).generate()
+
+    pwd = page.password()
+    assert pwd, "Password should exist before copying"
+
+    page.copy()
+
+    hint = driver.find_element("id", "hint").text
+    assert hint == "Copied!", f"Expected 'Copied!' hint, got '{hint}'"
+
+import pytest
+
+@pytest.mark.skip(reason="Clipboard access unreliable in headless browsers")
+def test_copy_button_copies_password_to_clipboard(driver):
+    page = PasswordGeneratorPage(driver).open()
+    page.set_length(12).generate()
+
+    pwd = page.password()
+    page.copy()
+
+    copied = driver.execute_async_script("""
+        const done = arguments[0];
+        navigator.clipboard.readText()
+            .then(text => done(text))
+            .catch(() => done(null));
+    """)
+
+    assert copied == pwd, f"Clipboard mismatch: expected {pwd}, got {copied}"
+
