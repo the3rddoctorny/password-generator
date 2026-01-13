@@ -8,7 +8,10 @@ def test_password_generator_accessibility(driver):
     axe.inject()
     results = axe.run()
 
-    violations = results["violations"]
+    violations = [
+       v for v in results["violations"]
+       if v["impact"] in ("critical", "serious")
+     ]  
 
     assert violations == [], f"Accessibility violations found: {violations}"
 

@@ -26,6 +26,14 @@ jobs:
       - name: Run UI tests
         run: pytest tests/test_password_generator.py
 
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots
+
+
   accessibility:
     name: Accessibility (Axe)
     runs-on: ubuntu-latest
@@ -46,4 +54,11 @@ jobs:
 
       - name: Run accessibility tests
         run: pytest tests/test_accessibility.py
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots
 
