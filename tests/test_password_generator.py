@@ -1,6 +1,9 @@
 import re
 import pytest
 from pages.password_generator_page import PasswordGeneratorPage
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 
 AMBIGUOUS = set("I0O")
 SYMBOLS = set("*+-=?!@$")
@@ -51,9 +54,9 @@ def test_copy_button_shows_feedback(driver):
     assert pwd, "Password should exist before copying"
 
     page.copy()
-
-    hint = driver.find_element("id", "hint").text
-    assert hint == "Copied!", f"Expected 'Copied!' hint, got '{hint}'"
+    WebDriverWait(driver, 5).until(
+        EC.text_to_be_present_in_element((By.ID, "hint"), "Copied!")
+)
 
 import pytest
 
