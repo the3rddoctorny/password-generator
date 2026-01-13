@@ -191,35 +191,31 @@ function generate() {
     let password;
 
     if (length === 8) {
-        // Fixed recipe, no truncation risk
+        // 3 + 3 + 1 + 1 = 8, guaranteed
         password =
             w1.slice(0, 3) +
             w2.slice(0, 3) +
             num +
             sym;
     } else {
-// Always place required chars in the middle
-const required = num + sym;
-const sepStr = useSeparator ? "-" : "";
+        const required = num + sym;
 
-// Build raw material from words
-let material = w1 + sepStr + w2;
+        // Build enough word material first
+        let material = w1 + sep + w2;
+        while (material.length + required.length < length) {
+            material += pick(WORDS);
+        }
 
-// Ensure material is long enough
-while (material.length + required.length < length) {
-    material += pick(WORDS);
-}
+        // Insert required chars in the middle
+        const mid = Math.floor(material.length / 2);
+        password =
+            material.slice(0, mid) +
+            required +
+            material.slice(mid);
 
-// Insert required chars in the middle
-const mid = Math.floor(material.length / 2);
-let password =
-    material.slice(0, mid) +
-    required +
-    material.slice(mid);
-
-// Final trim to exact length
-password = password.slice(0, length);
-}
+        // Final trim to exact length
+        password = password.slice(0, length);
+    }
 
     document.getElementById("password").textContent = password;
     document.getElementById("hint").textContent = "";
@@ -242,7 +238,6 @@ function copyPassword() {
 window.addEventListener("load", generate);
 document.getElementById("length").addEventListener("change", generate);
 document.getElementById("separator").addEventListener("change", generate);
-document.getElementById("placement").addEventListener("change", generate);
 </script>
 
 </body>
