@@ -27,3 +27,19 @@ def test_password_rules(driver, length):
     # No ambiguous characters
     assert not any(c in AMBIGUOUS for c in pwd), f"Ambiguous char in {pwd}"
 
+def test_password_rules_hold_across_multiple_generations(driver):
+    page = PasswordGeneratorPage(driver).open()
+
+    for length in (8, 12, 15):
+        page.set_length(length)
+
+        for _ in range(20):  # 20 random generations per length
+            page.generate()
+            pwd = page.password()
+
+            assert len(pwd) == length, f"Length mismatch: {pwd}"
+            assert re.search(r"[A-Z]", pwd), f"No uppercase: {pwd}"
+            assert re.search(r"[0-9]", pwd), f"No number: {pwd}"
+            assert any(c in SYMBOLS for c in pwd), f"No symbol: {pwd}"
+            assert not any(c in AMBIGUOUS for c in pwd), f"Ambiguous char: {pwd}"
+
