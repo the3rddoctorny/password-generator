@@ -198,36 +198,27 @@ function generate() {
             num +
             sym;
     } else {
-        // Always: word + number + symbol + separator + word
+// Always place required chars in the middle
 const required = num + sym;
 const sepStr = useSeparator ? "-" : "";
 
-// Start with required chars safely placed
-let left = w1;
-let right = w2;
+// Build raw material from words
+let material = w1 + sepStr + w2;
 
-// Assemble base
-let password = left + required + sepStr + right;
-
-// If too long, trim ONLY word material from the right side
-while (password.length > length) {
-    if (right.length > 0) {
-        right = right.slice(0, -1);
-    } else if (left.length > 0) {
-        left = left.slice(0, -1);
-    }
-    password = left + required + sepStr + right;
+// Ensure material is long enough
+while (material.length + required.length < length) {
+    material += pick(WORDS);
 }
 
-// If too short, pad using more word material
-while (password.length < length) {
-    if (right.length < w2.length) {
-        right += w2[right.length];
-    } else {
-        // fallback: reuse letters from left
-        left += left[left.length % left.length];
-    }
-    password = left + required + sepStr + right;
+// Insert required chars in the middle
+const mid = Math.floor(material.length / 2);
+let password =
+    material.slice(0, mid) +
+    required +
+    material.slice(mid);
+
+// Final trim to exact length
+password = password.slice(0, length);
 }
 
     document.getElementById("password").textContent = password;
