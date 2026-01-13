@@ -137,14 +137,6 @@
             <input type="checkbox" id="separator">
             Use separator (-) between words
         </label>
-
-        <label>
-            Placement:
-            <select id="placement">
-                <option value="end" selected>Number & symbol at end</option>
-                <option value="middle">Between words</option>
-            </select>
-        </label>
     </div>
 
     <button id="generate" onclick="generate()">Generate</button>
@@ -181,12 +173,11 @@ function estimateEntropy(length) {
 function generate() {
     const length = parseInt(document.getElementById("length").value, 10);
     const useSeparator = document.getElementById("separator").checked;
-    const placement = document.getElementById("placement").value;
 
     let w1 = pick(WORDS);
     let w2 = pick(WORDS);
 
-    // Capitalize one word
+    // Capitalize exactly one word
     if (Math.random() < 0.5) {
         w1 = w1[0].toUpperCase() + w1.slice(1);
     } else {
@@ -196,23 +187,22 @@ function generate() {
     const num = pick(NUMBERS);
     const sym = pick(SYMBOLS);
     const sep = useSeparator ? "-" : "";
-    const extra = useSeparator ? 1 : 0;
-
 
     let password;
 
     if (length === 8) {
+        // Fixed recipe, no truncation risk
         password =
             w1.slice(0, 3) +
             w2.slice(0, 3) +
             num +
             sym;
     } else {
-        if (placement === "middle") {
-            password = (w1 + num + sym + sep + w2).slice(0, length);
-        } else {
-            password = (w1 + sep + w2 + num + sym).slice(0, length);
-        }
+        // Always: word + number + symbol + separator + word
+        const core = w1 + num + sym + sep + w2;
+
+        // Truncate ONLY word content, never required chars
+        password = core.slice(0, length);
     }
 
     document.getElementById("password").textContent = password;
@@ -220,6 +210,7 @@ function generate() {
     document.getElementById("entropy").textContent =
         `Length: ${password.length} • Classes: upper, lower, number, symbol • ~${estimateEntropy(password.length)} bits entropy`;
 }
+
 
 function copyPassword() {
     const password = document.getElementById("password").textContent;
