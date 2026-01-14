@@ -153,11 +153,16 @@
 </main>
 
 <script>
-const WORDS = [
-    "river","planet","forest","silver","cloud",
-    "matrix","carbon","delta","fusion","lunar",
-    "solar","amber","signal","vector","neuron"
-];
+let WORDS = [];
+
+async function loadWords() {
+  const res = await fetch("assets/words_v1.json", { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load word list: " + res.status);
+  WORDS = await res.json();
+  if (!Array.isArray(WORDS) || WORDS.length < 1024) {
+    throw new Error("Word list invalid or too small: " + (WORDS?.length ?? "null"));
+  }
+}
 
 const NUMBERS = "123456789";
 const SYMBOLS = "*+-=?!@$";
@@ -236,7 +241,16 @@ function copyPassword() {
     });
 }
 
-window.addEventListener("load", generate);
+window.addEventListener("load", async () => {
+  try {
+    await loadWords();
+    generate();
+  } catch (e) {
+    document.getElementById("hint").textContent = "Word list failed to load";
+    console.error(e);
+  }
+});
+
 document.getElementById("length").addEventListener("change", generate);
 document.getElementById("separator").addEventListener("change", generate);
 </script>
