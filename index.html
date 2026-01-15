@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.4.1 -->
+<!-- Password Generator v1.4.2 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,119 +7,99 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-    :root {
-        --bg: #f2f2f7;
-        --card: #ffffff;
-        --text: #000;
-        --muted: #666;
-        --accent: #005fcc;
-        --secondary: #e5e5ea;
-    }
+:root {
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --text: #000;
+  --muted: #666;
+  --accent: #005fcc;
+  --secondary: #e5e5ea;
+}
 
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --bg: #1c1c1e;
-            --card: #2c2c2e;
-            --text: #fff;
-            --muted: #aaa;
-            --accent: #0a84ff;
-            --secondary: #3a3a3c;
-        }
-    }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --card: #2c2c2e;
+    --text: #fff;
+    --muted: #aaa;
+    --accent: #0a84ff;
+    --secondary: #3a3a3c;
+  }
+}
 
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-    }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
 
-    .card {
-        background: var(--card);
-        padding: 24px 28px;
-        border-radius: 14px;
-        width: 340px;
-        box-shadow: 0 10px 30px rgba(0,0,0,.25);
-        text-align: center;
-    }
+.card {
+  background: var(--card);
+  padding: 24px 28px;
+  border-radius: 14px;
+  width: 340px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  text-align: center;
+}
 
-    h1 {
-        font-size: 1.3em;
-        margin-bottom: 18px;
-    }
+h1 {
+  font-size: 1.3em;
+  margin-bottom: 18px;
+}
 
-    select, button, label {
-        font-size: 1em;
-        width: 100%;
-        margin-top: 10px;
-    }
+select, button, label {
+  font-size: 1em;
+  width: 100%;
+  margin-top: 10px;
+}
 
-    select, button {
-        padding: 10px;
-        border-radius: 10px;
-        border: none;
-    }
+select, button {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+}
 
-    button {
-        background: var(--accent);
-        color: white;
-        cursor: pointer;
-    }
+button {
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
 
-    button.secondary {
-        background: var(--secondary);
-        color: var(--text);
-    }
+button.secondary {
+  background: var(--secondary);
+  color: var(--text);
+}
 
-    .options {
-        text-align: left;
-        margin-top: 12px;
-        font-size: .9em;
-    }
+.password {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--secondary);
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 1.1em;
+  user-select: all;
+  word-break: break-word;
+  min-height: 1.2em;
+}
 
-    .options label {
-        display: block;
-        margin-top: 6px;
-        cursor: pointer;
-    }
+.hint {
+  font-size: .8em;
+  color: var(--muted);
+  margin-top: 6px;
+  min-height: 1em;
+}
 
-    .password {
-        margin-top: 18px;
-        padding: 14px;
-        background: var(--secondary);
-        border-radius: 10px;
-        font-family: monospace;
-        font-size: 1.1em;
-        user-select: all;
-        word-break: break-word;
-        min-height: 1.2em;
-    }
-
-    .hint {
-        font-size: .8em;
-        color: var(--muted);
-        margin-top: 6px;
-        min-height: 1em;
-    }
-
-    .entropy {
-        font-size: .75em;
-        color: var(--muted);
-        margin-top: 10px;
-        text-align: left;
-        min-height: 1em;
-    }
-
-    .version {
-        font-size: .7em;
-        color: var(--muted);
-        margin-top: 8px;
-        text-align: right;
-    }
+.version {
+  font-size: .7em;
+  color: var(--muted);
+  margin-top: 8px;
+  text-align: right;
+}
 </style>
 </head>
 
@@ -135,13 +115,6 @@
       <option value="15">15 characters</option>
     </select>
 
-    <div class="options">
-      <label>
-        <input type="checkbox" id="separator">
-        Use separator (-) between words
-      </label>
-    </div>
-
     <button id="generate" type="button">Generate</button>
 
     <div class="password" id="password" aria-live="polite"></div>
@@ -149,18 +122,12 @@
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="entropy" id="entropy"></div>
-    <div class="version">v1.4 • wordlist v1 (1024)</div>
+    <div class="version">v1.4.2 • wordlist v1 (1024)</div>
   </div>
 </main>
 
 <script>
-/**
- * Wordlist + state flags for Selenium:
- *   window.__wordsLoaded: boolean
- *   window.__wordsLoadError: string ("" when OK)
- *   window.__wordsLoadStarted: boolean
- */
+/* Selenium-visible state */
 window.__wordsLoaded = false;
 window.__wordsLoadError = "";
 window.__wordsLoadStarted = false;
@@ -170,145 +137,93 @@ let WORDS = [];
 const $ = (id) => document.getElementById(id);
 const passwordEl = $("password");
 const hintEl = $("hint");
-const entropyEl = $("entropy");
 const lengthEl = $("length");
-const separatorEl = $("separator");
-const generateBtn = $("generate");
-const copyBtn = $("copy");
 
-function setHint(msg) {
-  hintEl.textContent = msg || "";
-}
-
-function setPassword(pwd) {
-  passwordEl.textContent = pwd || "";
-}
-
-function randIndex(maxExclusive) {
-  // Prefer crypto randomness when available
-  if (window.crypto && window.crypto.getRandomValues) {
-    const arr = new Uint32Array(1);
-    window.crypto.getRandomValues(arr);
-    return arr[0] % maxExclusive;
+function randIndex(max) {
+  if (crypto?.getRandomValues) {
+    const a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return a[0] % max;
   }
-  return Math.floor(Math.random() * maxExclusive);
+  return Math.floor(Math.random() * max);
 }
 
 function pickWord() {
-  if (!WORDS.length) throw new Error("Word list not loaded");
   return WORDS[randIndex(WORDS.length)];
-}
-
-function estimateBits() {
-  // 2 words + 1 digit + 1 symbol
-  const wordCount = WORDS.length;
-  if (!wordCount) return null;
-
-  const wordBits = 2 * Math.log2(wordCount); // 2 words
-  const digitBits = Math.log2(9);            // "123456789"
-  const symBits = Math.log2(8);              // "*+-=?!@$" (8 symbols)
-  return Math.round(wordBits + digitBits + symBits);
 }
 
 async function loadWords() {
   try {
-    const url = new URL("./assets/words_v1.json", window.location.href);
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) throw new Error(`words_v1.json HTTP ${res.status}`);
-
+    const res = await fetch("./assets/words_v1.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data) || data.length < 1024) {
-      throw new Error(`Word list invalid/too small: ${Array.isArray(data) ? data.length : typeof data}`);
+      throw new Error("Invalid word list");
     }
-
     WORDS = data;
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    setHint("");
   } catch (e) {
     window.__wordsLoaded = false;
-    window.__wordsLoadError = String(e && e.message ? e.message : e);
-    console.error("Word list load failed:", e);
-    setHint(`Word list failed: ${window.__wordsLoadError}`);
+    window.__wordsLoadError = String(e);
+    hintEl.textContent = "Word list failed to load";
   }
 }
 
 function generate() {
-  // Clear copy hint on any new generation attempt
-  setHint("");
+  hintEl.textContent = "";
 
   if (!window.__wordsLoaded) {
-    setPassword("");
-    setHint(window.__wordsLoadError ? `Word list failed: ${window.__wordsLoadError}` : "Loading word list…");
+    passwordEl.textContent = "";
     return;
   }
 
   let w1 = pickWord();
   let w2 = pickWord();
 
-  const length = parseInt(lengthEl.value, 10);
-  const useSeparator = !!separatorEl.checked;
-
   // Capitalize exactly one word
-  if (randIndex(2) === 0) w1 = w1[0].toUpperCase() + w1.slice(1);
-  else w2 = w2[0].toUpperCase() + w2.slice(1);
+  (randIndex(2) === 0)
+    ? w1 = w1[0].toUpperCase() + w1.slice(1)
+    : w2 = w2[0].toUpperCase() + w2.slice(1);
 
   const num = "123456789"[randIndex(9)];
   const sym = "*+-=?!@$"[randIndex(8)];
-  const sep = useSeparator ? "-" : "";
+  const length = parseInt(lengthEl.value, 10);
 
-  let password = "";
+  let base = w1 + w2;
 
   if (length === 8) {
-    // 3 + 3 + 1 + 1 = 8
-    password = w1.slice(0, 3) + w2.slice(0, 3) + num + sym;
-  } else {
-    // Ensure exactly 1 digit and 1 symbol appear somewhere in the middle
-    const required = num + sym;
-    let material = w1 + sep + w2;
-
-    while (material.length + required.length < length) {
-      material += pickWord();
-    }
-
-    const mid = Math.floor(material.length / 2);
-    password = (material.slice(0, mid) + required + material.slice(mid)).slice(0, length);
+    passwordEl.textContent =
+      w1.slice(0,3) + w2.slice(0,3) + num + sym;
+    return;
   }
 
-  setPassword(password);
+  while (base.length < length - 2) {
+    base += pickWord();
+  }
 
-  const bits = estimateBits();
-  entropyEl.textContent = bits ? `Estimated strength: ~${bits} bits` : "";
+  const mid = Math.floor(base.length / 2);
+  passwordEl.textContent =
+    (base.slice(0, mid) + num + sym + base.slice(mid)).slice(0, length);
 }
 
 async function copyPassword() {
-  const password = passwordEl.textContent;
-  if (!password) return;
-
-  try {
-    await navigator.clipboard.writeText(password);
-    setHint("Copied!");
-    window.setTimeout(() => setHint(""), 1200);
-  } catch (e) {
-    console.error("Clipboard write failed:", e);
-    setHint("Copy failed");
-  }
+  const pwd = passwordEl.textContent;
+  if (!pwd) return;
+  await navigator.clipboard.writeText(pwd);
+  hintEl.textContent = "Copied!";
+  setTimeout(() => hintEl.textContent = "", 1200);
 }
 
-// Wire events (no inline onclicks needed)
-generateBtn.addEventListener("click", generate);
-copyBtn.addEventListener("click", copyPassword);
+$("generate").addEventListener("click", generate);
+$("copy").addEventListener("click", copyPassword);
 lengthEl.addEventListener("change", generate);
-separatorEl.addEventListener("change", generate);
 
-// Load words after DOM is ready, then generate once.
 window.addEventListener("load", async () => {
   window.__wordsLoadStarted = true;
-  setHint("Loading word list…");
   await loadWords();
   if (window.__wordsLoaded) generate();
 });
 </script>
-
 </body>
 </html>
