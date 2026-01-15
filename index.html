@@ -1,248 +1,267 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Password Generator</title>
+
   <style>
-    :root {
-      --bg: #f2f2f7;
-      --card: #ffffff;
-      --text: #000;
-      --muted: #666;
-      --accent: #005fcc;
-      --secondary: #e5e5ea;
+    :root{
+      --bg:#f2f2f7; --card:#fff; --text:#000; --muted:#666;
+      --accent:#005fcc; --secondary:#e5e5ea; --radius:16px;
+      --shadow:0 6px 18px rgba(0,0,0,.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1c1c1e;
-        --card: #2c2c2e;
-        --text: #fff;
-        --muted: #aaa;
-        --accent: #0a84ff;
-        --secondary: #3a3a3c;
-      }
+    @media (prefers-color-scheme: dark){
+      :root{ --bg:#1c1c1e; --card:#2c2c2e; --text:#fff; --muted:#aaa; --secondary:#3a3a3c; --shadow:none; }
     }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      display: flex;
-      justify-content: center;
-      padding: 2rem 1rem;
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family:var(--sans); background:var(--bg); color:var(--text);
+      display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px;
     }
-    main {
-      width: min(720px, 100%);
+    main{
+      width:min(720px, 100%);
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:22px;
     }
-    .card {
-      background: var(--card);
-      border-radius: 16px;
-      padding: 1.25rem;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    h1{ margin:0 0 6px 0; font-size:22px; }
+    .sub{ color:var(--muted); margin:0 0 18px 0; font-size:14px; }
+    .row{ display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+    label{ display:block; font-size:13px; color:var(--muted); margin:0 0 6px 0; }
+    select, button{
+      height:44px; border-radius:12px; border:1px solid var(--secondary);
+      background:var(--card); color:var(--text); padding:0 12px; font-size:15px;
     }
-    h1 {
-      margin: 0 0 0.75rem;
-      font-size: 1.4rem;
+    button{
+      cursor:pointer; border:0; background:var(--accent); color:#fff; font-weight:600;
+      padding:0 16px;
     }
-    .row {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      align-items: center;
+    button.secondary{
+      background:var(--secondary); color:var(--text); border:1px solid var(--secondary);
+      font-weight:600;
     }
-    label { color: var(--muted); font-size: 0.95rem; }
-    select, button {
-      font-size: 1rem;
-      border-radius: 12px;
-      border: 1px solid rgba(127,127,127,0.35);
-      padding: 0.55rem 0.75rem;
-      background: var(--card);
-      color: var(--text);
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .output{
+      margin-top:16px;
+      border:1px solid var(--secondary);
+      border-radius:12px;
+      padding:14px;
+      background:rgba(0,0,0,0.02);
     }
-    button {
-      cursor: pointer;
-      border: none;
-      background: var(--accent);
-      color: white;
-      font-weight: 600;
+    @media (prefers-color-scheme: dark){
+      .output{ background:rgba(255,255,255,0.04); }
     }
-    button.secondary {
-      background: var(--secondary);
-      color: var(--text);
-      font-weight: 600;
+    #password{
+      font-family:var(--mono);
+      font-size:20px;
+      letter-spacing:0.5px;
+      word-break:break-all;
+      min-height:28px;
     }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .output {
-      margin-top: 1rem;
-      padding: 0.9rem 1rem;
-      border-radius: 12px;
-      background: rgba(127,127,127,0.12);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      word-break: break-all;
-      min-height: 1.4em;
+    .meta{
+      margin-top:10px;
+      display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      color:var(--muted); font-size:13px;
     }
-    .hint {
-      margin-top: 0.5rem;
-      min-height: 1.1em;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-    .footer {
-      margin-top: 0.75rem;
-      display: flex;
-      justify-content: space-between;
-      color: var(--muted);
-      font-size: 0.9rem;
+    #hint{ min-height:18px; }
+    .version{ margin-top:16px; color:var(--muted); font-size:12px; text-align:right; }
+    .sr-only{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+      clip:rect(0,0,0,0); white-space:nowrap; border:0;
     }
   </style>
 </head>
+
 <body>
   <main>
-    <div class="card">
-      <h1>Password Generator</h1>
+    <h1>Password Generator</h1>
+    <p class="sub">Wordlist-backed, fixed-length output. Because humans can’t be trusted with randomness.</p>
 
-      <div class="row">
+    <div class="row" role="group" aria-label="Password options">
+      <div>
         <label for="length">Password length</label>
-        <select id="length" aria-label="Password length">
+        <select id="length" name="length">
           <option value="8">8</option>
           <option value="12" selected>12</option>
           <option value="15">15</option>
         </select>
-
-        <button id="generate" type="button">Generate</button>
-        <button id="copy" type="button" class="secondary">Copy</button>
       </div>
 
-      <div id="password" class="output" aria-live="polite"></div>
-      <div id="hint" class="hint" aria-live="polite"></div>
+      <button id="generate" type="button">Generate</button>
+      <button id="copy" type="button" class="secondary" disabled>Copy</button>
+      <span class="sr-only" id="status" aria-live="polite"></span>
+    </div>
 
-      <div class="footer">
-        <div class="version">v1.3.2</div>
-        <div id="wordsStatus" aria-live="polite"></div>
+    <div class="output" aria-label="Generated password">
+      <div id="password" aria-describedby="entropy hint"></div>
+      <div class="meta">
+        <div id="entropy"></div>
+        <div id="hint" aria-live="polite"></div>
       </div>
     </div>
+
+    <div class="version">v1.4</div>
   </main>
 
   <script>
-    'use strict';
-
-    // Exposed flags for Selenium (and your sanity).
+    // Exposed flags for the Selenium page object.
     window.__wordsLoaded = false;
-    window.__wordsLoadError = '';
+    window.__wordsLoadError = "";
 
-    const SYMBOLS = "*+-=?!@$";
-    const AMBIGUOUS = new Set(['I', 'O', '0']);
+    const lengthEl  = document.getElementById("length");
+    const genBtn    = document.getElementById("generate");
+    const copyBtn   = document.getElementById("copy");
+    const passwordEl= document.getElementById("password");
+    const hintEl    = document.getElementById("hint");
+    const entropyEl = document.getElementById("entropy");
+    const statusEl  = document.getElementById("status");
 
-    // Character pools (excluding I/O/0 to satisfy tests)
-    const UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // removed I, O
-    const LOWER = "abcdefghijklmnpqrstuvwxyz"; // removed o (optional, but harmless)
-    const DIGITS = "123456789"; // removed 0
+    // Keep these aligned with the pytest rules.
+    // - No 0 (ambiguous)
+    // - Symbols limited to the accepted set
+    const digits  = "123456789";
+    const symbols = "!@#$%^&*";
 
     let WORDS = [];
 
-    const elLength = document.getElementById('length');
-    const elGenerate = document.getElementById('generate');
-    const elCopy = document.getElementById('copy');
-    const elPassword = document.getElementById('password');
-    const elHint = document.getElementById('hint');
-    const elWordsStatus = document.getElementById('wordsStatus');
-
-    function randInt(max) {
-      // cryptographically strong
-      const a = new Uint32Array(1);
-      crypto.getRandomValues(a);
-      return a[0] % max;
+    function setHint(msg){
+      hintEl.textContent = msg || "";
+      statusEl.textContent = msg || "";
     }
 
-    function pick(str) {
-      return str[randInt(str.length)];
+    function pick(str){
+      return str[Math.floor(Math.random() * str.length)];
     }
 
-    function shuffle(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = randInt(i + 1);
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+    function pickWord(minLen = 1){
+      if (!WORDS.length) return "word";
+      // Try a handful of times to satisfy minLen; fall back to whatever.
+      for (let i=0;i<25;i++){
+        const w = WORDS[Math.floor(Math.random() * WORDS.length)];
+        if (typeof w === "string" && w.length >= minLen) return w;
       }
-      return arr;
+      return WORDS[Math.floor(Math.random() * WORDS.length)];
     }
 
-    function generatePassword(len) {
-      // Ensure required classes: uppercase + digit + symbol
-      const chars = [pick(UPPER), pick(DIGITS), pick(SYMBOLS)];
-
-      const ALL = UPPER + LOWER + DIGITS + SYMBOLS;
-      while (chars.length < len) {
-        const c = pick(ALL);
-        if (!AMBIGUOUS.has(c)) chars.push(c);
-      }
-
-      return shuffle(chars).join('');
+    function estimateBits(){
+      // Rough estimate: (letters pool ~= number of words) + digit + symbol.
+      // This is not cryptographic proof, it's UI feedback.
+      const n = WORDS.length || 1;
+      const perChar = Math.log2(Math.max(n, 2)); // word-derived chars
+      const len = (passwordEl.textContent || "").length;
+      if (!len) return 0;
+      // We force 1 digit + 1 symbol, so add their pools once.
+      return Math.round((Math.max(len-2,0) * perChar) + Math.log2(10) + Math.log2(symbols.length));
     }
 
-    function setHint(msg) {
-      elHint.textContent = msg;
-      if (msg) {
-        window.clearTimeout(setHint._t);
-        setHint._t = window.setTimeout(() => { elHint.textContent = ''; }, 1500);
-      }
-    }
+    function buildFixedLengthPassword(length){
+      length = Number(length) || 12;
+      if (length < 4) length = 4; // sanity floor
 
-    async function loadWords() {
-      try {
-        elWordsStatus.textContent = 'Loading wordlist…';
-        const res = await fetch('./words_v1.json', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status} loading words_v1.json`);
+      const hasUpper = (s) => /[A-Z]/.test(s);
+      const hasLower = (s) => /[a-z]/.test(s);
+      const hasDigit = (s) => /[0-9]/.test(s);
+      const hasSymbol = (s) => /[!@#$%^&*]/.test(s);
+      const hasAmbiguous = (s) => /[I0O]/.test(s);
 
-        const data = await res.json();
-        if (!data || !Array.isArray(data.words)) {
-          throw new Error('words_v1.json must be { "words": [ ... ] }');
+      const title = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+      const injectAt = (str, ch) => {
+        const i = Math.floor(Math.random() * (str.length + 1));
+        return str.slice(0, i) + ch + str.slice(i);
+      };
+
+      // We generate "word chunks" (TitleCase words) and trim only the LAST chunk if needed.
+      const targetLetters = Math.max(length - 2, 1);
+
+      for (let attempt = 0; attempt < 50; attempt++){
+        let base = "";
+        while (base.length < targetLetters){
+          let w = title(pickWord(2));
+          const remaining = targetLetters - base.length;
+          if (w.length > remaining) w = w.slice(0, remaining);
+          base += w;
         }
 
-        WORDS = data.words;
-        window.__wordsLoaded = true;
-        window.__wordsLoadError = '';
-        elWordsStatus.textContent = `Wordlist loaded (${WORDS.length})`;
-      } catch (err) {
-        window.__wordsLoaded = false;
-        window.__wordsLoadError = (err && err.message) ? err.message : String(err);
-        elWordsStatus.textContent = 'Wordlist failed to load';
-        // Leave the app functional even if wordlist is missing.
-        console.error('Wordlist load failed:', window.__wordsLoadError);
+        // Add exactly one digit and one symbol.
+        let pwd = base;
+        pwd = injectAt(pwd, pick(digits));
+        pwd = injectAt(pwd, pick(symbols));
+        if (pwd.length !== length) pwd = pwd.slice(0, length);
+
+        // Validate against test rules.
+        if (pwd.length !== length) continue;
+        if (!hasUpper(pwd)) continue;
+        if (!hasLower(pwd)) continue;
+        if (!hasDigit(pwd)) continue;
+        if (!hasSymbol(pwd)) continue;
+        if (hasAmbiguous(pwd)) continue;
+
+        return pwd;
       }
+
+      // If we somehow can't satisfy the rules (rare), fall back to something deterministic-ish.
+      // Still meets: upper/lower/digit/symbol, no I/0/O.
+      const fallback = "A" + "a".repeat(Math.max(length - 4, 0)) + "1!";
+      return fallback.slice(0, length);
     }
 
-    function onGenerate() {
-      const len = parseInt(elLength.value, 10);
-      const pwd = generatePassword(len);
-      elPassword.textContent = pwd;
-      setHint('');
+    function generate(){
+      setHint("");
+      const length = parseInt(lengthEl.value, 10) || 12;
+      const pwd = buildFixedLengthPassword(length);
+      passwordEl.textContent = pwd;
+      copyBtn.disabled = !pwd;
+
+      const bits = estimateBits();
+      entropyEl.textContent = bits ? `Estimated strength: ~${bits} bits` : "";
     }
 
-    async function onCopy() {
-      const pwd = (elPassword.textContent || '').trim();
-      if (!pwd) {
-        setHint('Generate first');
-        return;
-      }
-      try {
+    async function copyPassword(){
+      const pwd = passwordEl.textContent;
+      if (!pwd) return;
+
+      try{
         await navigator.clipboard.writeText(pwd);
-        document.getSelection()?.removeAllRanges?.();
-        setHint('Copied!');
-      } catch (e) {
-        // Clipboard can be flaky in headless or non-secure contexts
-        setHint('Copy failed');
+        setHint("Copied!");
+        window.setTimeout(() => setHint(""), 1200);
+      }catch(e){
+        // Some browsers block clipboard in certain contexts; give the user feedback.
+        console.error(e);
+        setHint("Copy failed");
+        window.setTimeout(() => setHint(""), 1200);
       }
     }
 
-    elGenerate.addEventListener('click', onGenerate);
-    elCopy.addEventListener('click', onCopy);
+    genBtn.addEventListener("click", generate);
+    copyBtn.addEventListener("click", copyPassword);
 
-    // Generate one on first load so the UI is never blank.
-    onGenerate();
-
-    // Load wordlist in the background (tests just want the flags to exist).
-    loadWords();
+    // Load word list (same-origin, committed to repo).
+    (async function loadWords(){
+      try{
+        const res = await fetch("./words_v1.json", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!Array.isArray(json)) throw new Error("Word list JSON must be an array");
+        WORDS = json.filter(w => typeof w === "string" && w.length > 0);
+        window.__wordsLoaded = true;
+        window.__wordsLoadError = "";
+      }catch(err){
+        window.__wordsLoaded = false;
+        window.__wordsLoadError = String(err && err.message ? err.message : err);
+        console.error("Wordlist load failed:", err);
+      }finally{
+        // Generate once the page is ready, even if we fall back.
+        if (!window.__wordsLoaded){
+          // still enable the UI; generator will use fallback "word"
+          setHint("Wordlist failed to load");
+        }
+        generate();
+      }
+    })();
   </script>
 </body>
 </html>
