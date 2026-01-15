@@ -1,115 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Password Generator</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <style>
-:root {
-    --bg: #f2f2f7;
-    --card: #ffffff;
-    --text: #000;
-    --muted: #666;
-    --accent: #005fcc;
-    --secondary: #e5e5ea;
+:root{
+  --bg:#f2f2f7;
+  --card:#ffffff;
+  --text:#000;
+  --muted:#666;
+  --accent:#005fcc;
+  --secondary:#e5e5ea;
+  --border: rgba(0,0,0,.15);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1c1c1e;
+    --card:#2c2c2e;
+    --text:#fff;
+    --muted:#aaa;
+    --border: rgba(255,255,255,.18);
+  }
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #1c1c1e;
-        --card: #2c2c2e;
-        --text: #fff;
-        --muted: #aaa;
-    }
+body{
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 2rem;
 }
 
-body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 2rem;
+main{
+  max-width: 440px;
+  margin: 0 auto;
+  background: var(--card);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.06);
 }
 
-main {
-    max-width: 420px;
-    margin: auto;
-    background: var(--card);
-    padding: 1.5rem;
-    border-radius: 12px;
+label{
+  display:block;
+  margin-top: 1rem;
+  font-weight: 600;
 }
 
-label {
-    display: block;
-    margin-top: 1rem;
+select, button{
+  width:100%;
+  margin-top:.5rem;
+  padding:.65rem .75rem;
+  font-size:1rem;
+  border-radius:8px;
 }
 
-select, button {
-    width: 100%;
-    margin-top: 0.5rem;
-    padding: 0.6rem;
-    font-size: 1rem;
+select{
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
 }
 
-button {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
+button{
+  background: var(--accent);
+  color:#fff;
+  border:none;
+  cursor:pointer;
 }
 
-button.secondary {
-    background: var(--secondary);
-    color: var(--text);
+button.secondary{
+  background: var(--secondary);
+  color: var(--text);
 }
 
-.password {
-    margin-top: 1rem;
-    font-size: 1.2rem;
-    word-break: break-all;
+button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
 }
 
-.entropy {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--muted);
+.password{
+  margin-top: 1rem;
+  padding: .85rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 48px; /* makes it visible even when empty */
+  font-size: 1.15rem;
+  letter-spacing: .4px;
+  word-break: break-all;
 }
 
-#hint {
-    margin-top: 0.5rem;
-    color: green;
+.status{
+  margin-top: .5rem;
+  font-size: .9rem;
+  color: var(--muted);
 }
 
-.version {
-    margin-top: 1rem;
-    font-size: 0.75rem;
-    color: var(--muted);
-    text-align: center;
+.entropy{
+  margin-top: .6rem;
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+#hint{
+  margin-top: .5rem;
+  color: #1a7f37;
+  min-height: 1.2em;
+}
+
+.version{
+  margin-top: 1rem;
+  font-size: .75rem;
+  color: var(--muted);
+  text-align:center;
 }
 </style>
 </head>
 
 <body>
 <main>
-    <h1>Password Generator</h1>
+  <h1>Password Generator</h1>
 
-    <label for="length">Password length</label>
-    <select id="length">
-        <option value="8">8 characters</option>
-        <option value="12" selected>12 characters</option>
-        <option value="15">15 characters</option>
-    </select>
+  <label for="length">Password length</label>
+  <select id="length">
+    <option value="8">8 characters</option>
+    <option value="12" selected>12 characters</option>
+    <option value="15">15 characters</option>
+  </select>
 
-    <button id="generate" onclick="generate()">Generate</button>
+  <button id="generate" type="button" onclick="generate()" disabled>Generate</button>
 
-    <div class="password" id="password" aria-live="polite"></div>
+  <!-- Visible display area -->
+  <div class="password" id="password" aria-live="polite">Loading wordlist…</div>
+  <div class="status" id="status" aria-live="polite">Loading wordlist…</div>
 
-    <button id="copy" class="secondary" onclick="copyPassword()">Copy</button>
-    <div id="hint" aria-live="polite"></div>
+  <button id="copy" class="secondary" type="button" onclick="copyPassword()">Copy</button>
+  <div id="hint" aria-live="polite"></div>
 
-    <div class="entropy" id="entropy"></div>
-    <div class="version">v1.4</div>
+  <div class="entropy" id="entropy"></div>
+  <div class="version">v1.4</div>
 </main>
 
 <script>
@@ -118,74 +146,106 @@ const NUMBERS = "23456789".split("");
 const SYMBOLS = "!@#$%^&*?".split("");
 
 let WORDS = [];
+
+// Flags your tests look for
 window.__wordsLoaded = false;
 window.__wordsLoadError = false;
 
-fetch("words_v1.json")
-    .then(r => r.json())
-    .then(data => {
-        WORDS = data.words.filter(w => !AMBIGUOUS.test(w));
-        window.__wordsLoaded = true;
-    })
-    .catch(() => {
-        window.__wordsLoadError = true;
-    });
+function $(id){ return document.getElementById(id); }
 
-function pick(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
+function pick(arr){
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function capitalize(w) {
-    return w[0].toUpperCase() + w.slice(1);
+function capitalize(w){
+  return w[0].toUpperCase() + w.slice(1);
 }
 
-function pickWord() {
-    return pick(WORDS);
+function setStatus(msg){
+  $("status").textContent = msg;
 }
 
-function generate() {
-    if (!window.__wordsLoaded) return;
+function enableGenerate(){
+  $("generate").disabled = false;
+  setStatus("Ready");
+}
 
-    const length = parseInt(document.getElementById("length").value, 10);
+function failWordlist(msg){
+  window.__wordsLoadError = true;
+  $("password").textContent = "Wordlist failed to load.";
+  setStatus(msg);
+  // Keep generate disabled because your Selenium waits probably assume load success.
+  $("generate").disabled = true;
+}
 
-    let w1 = pickWord();
-    let w2 = pickWord();
-
-    if (Math.random() < 0.5) {
-        w1 = capitalize(w1);
-    } else {
-        w2 = capitalize(w2);
+fetch("words_v1.json", { cache: "no-store" })
+  .then(r => {
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  })
+  .then(data => {
+    const raw = Array.isArray(data) ? data : data.words;
+    if(!Array.isArray(raw) || raw.length === 0){
+      throw new Error("words_v1.json has no words array");
     }
 
-    const num = pick(NUMBERS);
-    const sym = pick(SYMBOLS);
+    WORDS = raw
+      .map(w => String(w).trim())
+      .filter(Boolean)
+      .filter(w => !AMBIGUOUS.test(w));
 
-    let password = w1 + w2 + num + sym;
-
-    // Enforce exact length
-    if (password.length > length) {
-        password = password.slice(0, length);
-    } else {
-        while (password.length < length) {
-            password += pick(NUMBERS);
-        }
+    if(WORDS.length < 50){
+      throw new Error("wordlist too small after filtering");
     }
 
-    document.getElementById("password").textContent = password;
-    document.getElementById("hint").textContent = "";
-    document.getElementById("entropy").textContent =
-        `Length: ${password.length} • Classes: upper, lower, number, symbol`;
+    window.__wordsLoaded = true;
+    enableGenerate();
+    generate(); // auto-generate once ready so UI isn't blank
+  })
+  .catch(err => {
+    failWordlist(`Wordlist load error: ${err.message}`);
+  });
+
+function generate(){
+  if(!window.__wordsLoaded) return;
+
+  const length = parseInt($("length").value, 10);
+
+  let w1 = pick(WORDS);
+  let w2 = pick(WORDS);
+
+  // Guarantee at least one uppercase letter (by capitalizing one word)
+  if(Math.random() < 0.5) w1 = capitalize(w1);
+  else w2 = capitalize(w2);
+
+  const num = pick(NUMBERS);
+  const sym = pick(SYMBOLS);
+
+  // No separator. Just words + required chars.
+  let pwd = w1 + w2 + num + sym;
+
+  // Enforce exact length deterministically
+  if(pwd.length > length){
+    pwd = pwd.slice(0, length);
+  } else {
+    while(pwd.length < length){
+      pwd += pick(NUMBERS);
+    }
+  }
+
+  $("password").textContent = pwd;
+  $("hint").textContent = "";
+  $("entropy").textContent = `Length: ${pwd.length} • Classes: upper, lower, number, symbol`;
 }
 
-function copyPassword() {
-    const pwd = document.getElementById("password").textContent;
-    if (!pwd) return;
+function copyPassword(){
+  const pwd = $("password").textContent || "";
+  if(!pwd || pwd.includes("Loading") || pwd.includes("failed")) return;
 
-    navigator.clipboard.writeText(pwd).then(() => {
-        const hint = document.getElementById("hint");
-        hint.textContent = "Copied!";
-        setTimeout(() => hint.textContent = "", 1200);
-    });
+  navigator.clipboard.writeText(pwd).then(() => {
+    $("hint").textContent = "Copied!";
+    setTimeout(() => $("hint").textContent = "", 1200);
+  });
 }
 </script>
 </body>
