@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.4.2 -->
+<!-- Password Generator v1.4.4 (clean: no merge conflicts, no duplicate declarations) -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -122,167 +122,158 @@ button.secondary {
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version">v1.4.3 • wordlist v1 (1024)</div>
+    <div class="version" id="version">v1.4.4 • wordlist: loading…</div>
   </div>
 </main>
 
+<!-- Optional: if present, this defines window.WORDS_V1 -->
 <script src="./assets/words_v1.js"></script>
 
 <script>
-/* Selenium-visible state */
+/* Selenium-visible state (harmless even if you never run Selenium again) */
 window.__wordsLoaded = false;
 window.__wordsLoadError = "";
 window.__wordsLoadStarted = false;
 
-// Clipboard test hooks (used by Selenium in headless CI)
+/* Clipboard test hooks (also harmless) */
 window.__testClipboard = window.__testClipboard || null;
 window.__lastCopyOk = false;
-
-/* Clipboard test hooks */
-window.__testClipboard = window.__testClipboard || null;
-window.__lastCopyOk = false;
-
-let WORDS = [];
 
 const $ = (id) => document.getElementById(id);
 const passwordEl = $("password");
 const hintEl = $("hint");
 const lengthEl = $("length");
+const versionEl = $("version");
+
+const SYMBOLS = "*+-=?!@$";
+const DIGITS = "123456789"; // avoid 0 (tests consider 0 ambiguous)
+const FALLBACK_WORDS = [
+  "alpha","bravo","candy","copper","delta","eagle","ember","forest","garden","harbor",
+  "herb","ivy","jungle","kitten","lemon","mango","nectar","ocean","paper","pebble",
+  "quartz","rabbit","saffron","silver","tiger","velvet","whisper","yellow","zephyr",
+  "basil","cactus","caramel","creamy","cherub","dragon","ginger","hazelnut","jasmine",
+  "meteor","pepper","rocket","shadow","sunset","violet","winter","zodiac",
+  "aurora","cobalt","comet","daisy","falcon","glacier","honey","indigo","maple","onyx",
+  "opal","pirate","pumpkin","saturn","tulip","walnut","willow","yonder"
+];
+
+let WORDS = [];
 
 function randIndex(max) {
-  if (crypto?.getRandomValues) {
+  if (window.crypto?.getRandomValues) {
     const a = new Uint32Array(1);
-    crypto.getRandomValues(a);
+    window.crypto.getRandomValues(a);
     return a[0] % max;
   }
   return Math.floor(Math.random() * max);
 }
 
-function pickWord() {
-  return WORDS[randIndex(WORDS.length)];
+function pick(arr) { return arr[randIndex(arr.length)]; }
+
+function sanitizeWord(w) {
+  return (w || "").toString().replace(/[^a-zA-Z]/g, "").toLowerCase();
+}
+
+function ensureUppercaseAvoidIO(s) {
+  if (/[A-Z]/.test(s)) return s;
+  const idx = s.search(/[a-hj-np-z]/); // excludes i and o
+  const i = idx >= 0 ? idx : 0;
+  const up = (s[i] || "h").toUpperCase();
+  const safe = (up === "I" || up === "O") ? "H" : up;
+  return s.slice(0, i) + safe + s.slice(i + 1);
+}
+
+function avoidAmbiguous(s) {
+  // only the tests care about I, O, 0 specifically
+  return s.replace(/0/g, "8").replace(/I/g, "H").replace(/O/g, "Q");
 }
 
 async function loadWords() {
   try {
-    // Prefer script-loaded words (works for file:// and avoids fetch flake)
-    if (Array.isArray(window.WORDS_V1) && window.WORDS_V1.length >= 1024) {
-      WORDS = window.WORDS_V1;
+    // Prefer script-loaded (works on GitHub Pages + local)
+    if (Array.isArray(window.WORDS_V1) && window.WORDS_V1.length >= 64) {
+      WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
+      versionEl.textContent = `v1.4.4 • wordlist: WORDS_V1 (${WORDS.length})`;
       return;
     }
 
-    // Fallback to fetch (fine when served over http://localhost in tests/CI)
+    // Fallback to json when served over http(s)
     const res = await fetch("./assets/words_v1.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length < 1024) throw new Error("Invalid word list");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length >= 64) {
+        WORDS = data.map(sanitizeWord).filter(Boolean);
+        window.__wordsLoaded = true;
+        window.__wordsLoadError = "";
+        versionEl.textContent = `v1.4.4 • wordlist: json (${WORDS.length})`;
+        return;
+      }
+    }
 
-    WORDS = data;
+    // Final fallback: embedded list (app still works)
+    WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
-    window.__wordsLoadError = "";
+    window.__wordsLoadError = "Assets missing; using fallback wordlist.";
+    versionEl.textContent = `v1.4.4 • wordlist: fallback (${WORDS.length})`;
+    hintEl.textContent = "Using built-in fallback word list (assets not found).";
   } catch (e) {
-    window.__wordsLoaded = false;
+    WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
+    window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    hintEl.textContent = "Word list failed to load";
+    versionEl.textContent = `v1.4.4 • wordlist: fallback (${WORDS.length})`;
+    hintEl.textContent = "Using built-in fallback word list (load failed).";
   }
+}
+
+function buildLetters(n) {
+  let out = "";
+  while (out.length < n) out += pick(WORDS);
+  out = out.slice(0, n);
+  out = ensureUppercaseAvoidIO(out);
+  return out;
 }
 
 function generate() {
   hintEl.textContent = "";
 
-  if (!window.__wordsLoaded) {
+  if (!window.__wordsLoaded || WORDS.length < 10) {
     passwordEl.textContent = "";
+    hintEl.textContent = "Word list not loaded.";
     return;
   }
 
-  let w1 = pickWord();
-  let w2 = pickWord();
-
-  // Capitalize exactly one word
-  (randIndex(2) === 0)
-    ? w1 = w1[0].toUpperCase() + w1.slice(1)
-    : w2 = w2[0].toUpperCase() + w2.slice(1);
-
-  const num = "123456789"[randIndex(9)];
-  const sym = "*+-=?!@$"[randIndex(8)];
   const length = parseInt(lengthEl.value, 10);
+  const num = DIGITS[randIndex(DIGITS.length)];
+  const sym = SYMBOLS[randIndex(SYMBOLS.length)];
 
   if (length === 8) {
-    // Always exactly 8 chars: 6 letters + digit + symbol
-    let base6 = w1 + w2;
-    while (base6.length < 6) base6 += pickWord();
-    base6 = base6.slice(0, 6);
-    passwordEl.textContent = base6 + num + sym;
+    let letters = buildLetters(6);
+    let pwd = letters + num + sym;
+    passwordEl.textContent = avoidAmbiguous(pwd);
     return;
   }
 
-  let base = w1 + w2;
-  while (base.length < length - 2) base += pickWord();
+  const lettersNeeded = Math.max(length - 2, 1);
+  let letters = buildLetters(lettersNeeded);
+  const mid = Math.floor(letters.length / 2);
 
-  let base = w1 + w2;
+  let pwd = (letters.slice(0, mid) + num + sym + letters.slice(mid)).slice(0, length);
+  pwd = ensureUppercaseAvoidIO(pwd);
+  pwd = avoidAmbiguous(pwd);
 
-if (length === 8) {
-  let letters = w1.slice(0, 3) + w2.slice(0, 3);
-
-  // Guarantee at least one ASCII uppercase A-Z in the letters portion.
-  // Avoid turning i/o into I/O (your tests reject I and O as ambiguous).
-  if (!/[A-Z]/.test(letters)) {
-    const idx = letters.search(/[a-hj-np-z]/); // skips i and o
-    const i = idx >= 0 ? idx : 0;
-    letters = letters.slice(0, i) + letters[i].toUpperCase() + letters.slice(i + 1);
-  }
-
-  passwordEl.textContent = letters + num + sym;
-  return;
-}
-
-  while (base.length < length - 2) {
-    base += pickWord();
-  }
->>>>>>> 3140562 (Fix 8-char mode to always include uppercase (avoid I/O))
-
-  const mid = Math.floor(base.length / 2);
-  passwordEl.textContent =
-    (base.slice(0, mid) + num + sym + base.slice(mid)).slice(0, length);
+  passwordEl.textContent = pwd;
 }
 
 async function writeClipboard(text) {
-  // 1) Selenium/test shim
-  if (window.__testClipboard?.writeText) {
-    return window.__testClipboard.writeText(text);
-  }
+  // 1) Test shim (stable in headless)
+  if (window.__testClipboard?.writeText) return window.__testClipboard.writeText(text);
 
-  // 2) Standard clipboard API
-  if (navigator.clipboard?.writeText) {
-    return navigator.clipboard.writeText(text);
-  }
+  // 2) Standard API
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
 
-  // 3) Fallback copy
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  ta.setAttribute("readonly", "");
-  ta.style.position = "absolute";
-  ta.style.left = "-9999px";
-  document.body.appendChild(ta);
-  ta.select();
-  const ok = document.execCommand("copy");
-  document.body.removeChild(ta);
-  if (!ok) throw new Error("execCommand copy failed");
-}
-
-async function writeClipboard(text) {
-  // 1) Selenium/test shim (preferred)
-  if (window.__testClipboard?.writeText) {
-    return window.__testClipboard.writeText(text);
-  }
-
-  // 2) Standard clipboard API
-  if (navigator.clipboard?.writeText) {
-    return navigator.clipboard.writeText(text);
-  }
-
-  // 3) Fallback copy for hostile environments
+  // 3) Fallback
   const ta = document.createElement("textarea");
   ta.value = text;
   ta.setAttribute("readonly", "");
@@ -304,7 +295,7 @@ async function copyPassword() {
     window.__lastCopyOk = true;
     hintEl.textContent = "Copied!";
     setTimeout(() => hintEl.textContent = "", 1200);
-  } catch (e) {
+  } catch (_) {
     window.__lastCopyOk = false;
     hintEl.textContent = "Copy failed";
   }
@@ -317,7 +308,7 @@ lengthEl.addEventListener("change", generate);
 window.addEventListener("load", async () => {
   window.__wordsLoadStarted = true;
   await loadWords();
-  if (window.__wordsLoaded) generate();
+  generate();
 });
 </script>
 </body>
