@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.4.4 (clean: no merge conflicts, no duplicate declarations) -->
+<!-- Password Generator v1.5.1 (wordlist-based, external JSON with fallback) -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,99 +7,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-:root {
-  --bg: #f2f2f7;
-  --card: #ffffff;
-  --text: #000;
-  --muted: #666;
-  --accent: #005fcc;
-  --secondary: #e5e5ea;
+:root { --bg:#f2f2f7; --card:#fff; --text:#000; --muted:#666; --accent:#005fcc; --secondary:#e5e5ea; }
+@media (prefers-color-scheme: dark){
+  :root { --bg:#1c1c1e; --card:#2c2c2e; --text:#fff; --muted:#aaa; --accent:#0a84ff; --secondary:#3a3a3c; }
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1c1c1e;
-    --card: #2c2c2e;
-    --text: #fff;
-    --muted: #aaa;
-    --accent: #0a84ff;
-    --secondary: #3a3a3c;
-  }
+body{
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:var(--text);
+  display:flex; justify-content:center; align-items:center; height:100vh; margin:0;
 }
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
+.card{
+  background:var(--card); padding:24px 28px; border-radius:14px; width:340px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25); text-align:center;
 }
-
-.card {
-  background: var(--card);
-  padding: 24px 28px;
-  border-radius: 14px;
-  width: 340px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  text-align: center;
+h1{ font-size:1.3em; margin:0 0 18px; }
+label, select, button{ width:100%; font-size:1em; margin-top:10px; }
+select, button{ padding:10px; border-radius:10px; border:none; }
+button{ background:var(--accent); color:#fff; cursor:pointer; }
+button.secondary{ background:var(--secondary); color:var(--text); }
+.password{
+  margin-top:18px; padding:14px; background:var(--secondary);
+  border-radius:10px; font-family:monospace; font-size:1.1em;
+  user-select:all; word-break:break-word; min-height:1.2em;
 }
-
-h1 {
-  font-size: 1.3em;
-  margin-bottom: 18px;
-}
-
-select, button, label {
-  font-size: 1em;
-  width: 100%;
-  margin-top: 10px;
-}
-
-select, button {
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-}
-
-button {
-  background: var(--accent);
-  color: white;
-  cursor: pointer;
-}
-
-button.secondary {
-  background: var(--secondary);
-  color: var(--text);
-}
-
-.password {
-  margin-top: 18px;
-  padding: 14px;
-  background: var(--secondary);
-  border-radius: 10px;
-  font-family: monospace;
-  font-size: 1.1em;
-  user-select: all;
-  word-break: break-word;
-  min-height: 1.2em;
-}
-
-.hint {
-  font-size: .8em;
-  color: var(--muted);
-  margin-top: 6px;
-  min-height: 1em;
-}
-
-.version {
-  font-size: .7em;
-  color: var(--muted);
-  margin-top: 8px;
-  text-align: right;
-}
+.hint{ font-size:.8em; color:var(--muted); margin-top:6px; min-height:1em; }
+.version{ font-size:.7em; color:var(--muted); margin-top:8px; text-align:right; }
 </style>
 </head>
 
@@ -122,23 +53,11 @@ button.secondary {
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.4.4 • wordlist: loading…</div>
+    <div class="version" id="version">v1.5.1 • loading words…</div>
   </div>
 </main>
 
-<!-- Optional: if present, this defines window.WORDS_V1 -->
-<script src="./assets/words_v1.js"></script>
-
 <script>
-/* Selenium-visible state (harmless even if you never run Selenium again) */
-window.__wordsLoaded = false;
-window.__wordsLoadError = "";
-window.__wordsLoadStarted = false;
-
-/* Clipboard test hooks (also harmless) */
-window.__testClipboard = window.__testClipboard || null;
-window.__lastCopyOk = false;
-
 const $ = (id) => document.getElementById(id);
 const passwordEl = $("password");
 const hintEl = $("hint");
@@ -146,20 +65,20 @@ const lengthEl = $("length");
 const versionEl = $("version");
 
 const SYMBOLS = "*+-=?!@$";
-const DIGITS = "123456789"; // avoid 0 (tests consider 0 ambiguous)
+const DIGITS = "123456789"; // avoid 0
+const AMBIGUOUS = /[IO0]/g;
+
+// Small fallback list so the app doesn't brick if assets 404.
 const FALLBACK_WORDS = [
-  "alpha","bravo","candy","copper","delta","eagle","ember","forest","garden","harbor",
-  "herb","ivy","jungle","kitten","lemon","mango","nectar","ocean","paper","pebble",
-  "quartz","rabbit","saffron","silver","tiger","velvet","whisper","yellow","zephyr",
-  "basil","cactus","caramel","creamy","cherub","dragon","ginger","hazelnut","jasmine",
-  "meteor","pepper","rocket","shadow","sunset","violet","winter","zodiac",
-  "aurora","cobalt","comet","daisy","falcon","glacier","honey","indigo","maple","onyx",
-  "opal","pirate","pumpkin","saturn","tulip","walnut","willow","yonder"
+  "herb","candy","silver","rocket","shadow","pepper","violet","winter","zodiac","basil",
+  "copper","forest","garden","harbor","lemon","mango","nectar","quartz","rabbit","saffron",
+  "tiger","velvet","whisper","yellow","zephyr","cactus","caramel","creamy","cherub","dragon",
+  "ginger","hazelnut","jasmine","meteor","sunset","willow","opal","saturn","tulip","walnut"
 ];
 
 let WORDS = [];
 
-function randIndex(max) {
+function randIndex(max){
   if (window.crypto?.getRandomValues) {
     const a = new Uint32Array(1);
     window.crypto.getRandomValues(a);
@@ -168,95 +87,84 @@ function randIndex(max) {
   return Math.floor(Math.random() * max);
 }
 
-function pick(arr) { return arr[randIndex(arr.length)]; }
-
-function sanitizeWord(w) {
+function sanitizeWord(w){
   return (w || "").toString().replace(/[^a-zA-Z]/g, "").toLowerCase();
 }
 
-function ensureUppercaseAvoidIO(s) {
+function pickWord(){
+  return WORDS[randIndex(WORDS.length)];
+}
+
+function pickDigit(){ return DIGITS[randIndex(DIGITS.length)]; }
+function pickSymbol(){ return SYMBOLS[randIndex(SYMBOLS.length)]; }
+
+function avoidAmbiguous(s){
+  return s.replace(AMBIGUOUS, (ch) => {
+    if (ch === "0") return "8";
+    if (ch === "I") return "H";
+    if (ch === "O") return "Q";
+    return ch;
+  });
+}
+
+function ensureUppercaseAvoidIO(s){
   if (/[A-Z]/.test(s)) return s;
-  const idx = s.search(/[a-hj-np-z]/); // excludes i and o
+  // pick a position we can uppercase without becoming I/O
+  const idx = s.search(/[a-hj-np-z]/); // excludes i,o
   const i = idx >= 0 ? idx : 0;
   const up = (s[i] || "h").toUpperCase();
   const safe = (up === "I" || up === "O") ? "H" : up;
   return s.slice(0, i) + safe + s.slice(i + 1);
 }
 
-function avoidAmbiguous(s) {
-  // only the tests care about I, O, 0 specifically
-  return s.replace(/0/g, "8").replace(/I/g, "H").replace(/O/g, "Q");
-}
-
-async function loadWords() {
+async function loadWords(){
+  hintEl.textContent = "";
   try {
-    // Prefer script-loaded (works on GitHub Pages + local)
-    if (Array.isArray(window.WORDS_V1) && window.WORDS_V1.length >= 64) {
-      WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
-      window.__wordsLoaded = true;
-      window.__wordsLoadError = "";
-      versionEl.textContent = `v1.4.4 • wordlist: WORDS_V1 (${WORDS.length})`;
-      return;
-    }
-
-    // Fallback to json when served over http(s)
     const res = await fetch("./assets/words_v1.json", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length >= 64) {
-        WORDS = data.map(sanitizeWord).filter(Boolean);
-        window.__wordsLoaded = true;
-        window.__wordsLoadError = "";
-        versionEl.textContent = `v1.4.4 • wordlist: json (${WORDS.length})`;
-        return;
-      }
-    }
+    if (!res.ok) throw new Error(`words_v1.json HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length < 64) throw new Error("Invalid word list (expected JSON array of words)");
 
-    // Final fallback: embedded list (app still works)
-    WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
-    window.__wordsLoaded = true;
-    window.__wordsLoadError = "Assets missing; using fallback wordlist.";
-    versionEl.textContent = `v1.4.4 • wordlist: fallback (${WORDS.length})`;
-    hintEl.textContent = "Using built-in fallback word list (assets not found).";
+    WORDS = data.map(sanitizeWord).filter(Boolean);
+    versionEl.textContent = `v1.5.1 • wordlist: assets (${WORDS.length})`;
+    return;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
-    window.__wordsLoaded = true;
-    window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.4.4 • wordlist: fallback (${WORDS.length})`;
-    hintEl.textContent = "Using built-in fallback word list (load failed).";
+    versionEl.textContent = `v1.5.1 • wordlist: fallback (${WORDS.length})`;
+    hintEl.textContent = "Could not load assets/words_v1.json, using fallback list.";
   }
 }
 
-function buildLetters(n) {
-  let out = "";
-  while (out.length < n) out += pick(WORDS);
-  out = out.slice(0, n);
-  out = ensureUppercaseAvoidIO(out);
-  return out;
+function buildLetters(targetLen){
+  // Two-word base, then pad with more words if needed
+  let letters = pickWord() + pickWord();
+  while (letters.length < targetLen) letters += pickWord();
+  letters = letters.slice(0, targetLen);
+  letters = ensureUppercaseAvoidIO(letters);
+  return letters;
 }
 
-function generate() {
+function generate(){
   hintEl.textContent = "";
-
-  if (!window.__wordsLoaded || WORDS.length < 10) {
+  if (!WORDS.length) {
     passwordEl.textContent = "";
-    hintEl.textContent = "Word list not loaded.";
+    hintEl.textContent = "Word list not loaded yet.";
     return;
   }
 
   const length = parseInt(lengthEl.value, 10);
-  const num = DIGITS[randIndex(DIGITS.length)];
-  const sym = SYMBOLS[randIndex(SYMBOLS.length)];
+  const num = pickDigit();
+  const sym = pickSymbol();
 
   if (length === 8) {
-    let letters = buildLetters(6);
-    let pwd = letters + num + sym;
+    // 6 letters + digit + symbol
+    let pwd = buildLetters(6) + num + sym;
     passwordEl.textContent = avoidAmbiguous(pwd);
     return;
   }
 
   const lettersNeeded = Math.max(length - 2, 1);
-  let letters = buildLetters(lettersNeeded);
+  const letters = buildLetters(lettersNeeded);
   const mid = Math.floor(letters.length / 2);
 
   let pwd = (letters.slice(0, mid) + num + sym + letters.slice(mid)).slice(0, length);
@@ -266,37 +174,27 @@ function generate() {
   passwordEl.textContent = pwd;
 }
 
-async function writeClipboard(text) {
-  // 1) Test shim (stable in headless)
-  if (window.__testClipboard?.writeText) return window.__testClipboard.writeText(text);
-
-  // 2) Standard API
-  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
-
-  // 3) Fallback
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  ta.setAttribute("readonly", "");
-  ta.style.position = "absolute";
-  ta.style.left = "-9999px";
-  document.body.appendChild(ta);
-  ta.select();
-  const ok = document.execCommand("copy");
-  document.body.removeChild(ta);
-  if (!ok) throw new Error("execCommand copy failed");
-}
-
-async function copyPassword() {
+async function copyPassword(){
   const pwd = passwordEl.textContent;
   if (!pwd) return;
 
   try {
-    await writeClipboard(pwd);
-    window.__lastCopyOk = true;
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(pwd);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = pwd;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
     hintEl.textContent = "Copied!";
     setTimeout(() => hintEl.textContent = "", 1200);
   } catch (_) {
-    window.__lastCopyOk = false;
     hintEl.textContent = "Copy failed";
   }
 }
@@ -306,7 +204,6 @@ $("copy").addEventListener("click", copyPassword);
 lengthEl.addEventListener("change", generate);
 
 window.addEventListener("load", async () => {
-  window.__wordsLoadStarted = true;
   await loadWords();
   generate();
 });
