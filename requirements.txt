@@ -1,5 +1,0 @@
-selenium
-pytest
-webdriver-manager
-axe-selenium-python
-
