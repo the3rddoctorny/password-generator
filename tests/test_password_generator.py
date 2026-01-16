@@ -1,26 +1,33 @@
 import re
 import pytest
+
 from pages.password_generator_page import PasswordGeneratorPage
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
+
 AMBIGUOUS = set("I0O")
 SYMBOLS = set("*+-=?!@$")
 
-WebDriverWait(driver, 10).until(
-    lambda d: d.execute_script("return window.__wordsLoaded === true;")
-)
 
-@pytest.mark.parametrize(
-    "length",
-    [8, 12, 15],
-    ids=["len8", "len12", "len15"]
-)
-def test_password_rules(driver, length):
+@pytest.fixture()
+def page(driver):
+    """
+    Open the app and wait until the wordlist is loaded.
+    This MUST happen after open(), not at import time.
+    """
     page = PasswordGeneratorPage(driver).open()
-    page.set_length(length).generate()
 
+    WebDriverWait(driver, 10).until(
+        lambda d: d.execute_script("return window.__wordsLoaded === true;")
+    )
+    return page
+
+
+@pytest.mark.parametrize("length", [8, 12, 15], ids=["len8", "len12", "len15"])
+def test_password_rules(page, driver, length):
+    page.set_length(length).generate()
     pwd = page.password()
 
     # Exact length
@@ -34,9 +41,8 @@ def test_password_rules(driver, length):
     # No ambiguous characters
     assert not any(c in AMBIGUOUS for c in pwd), f"Ambiguous char in {pwd}"
 
-def test_password_rules_hold_across_multiple_generations(driver):
-    page = PasswordGeneratorPage(driver).open()
 
+def test_password_rules_hold_across_multiple_generations(page):
     for length in (8, 12, 15):
         page.set_length(length)
 
@@ -50,45 +56,30 @@ def test_password_rules_hold_across_multiple_generations(driver):
             assert any(c in SYMBOLS for c in pwd), f"No symbol: {pwd}"
             assert not any(c in AMBIGUOUS for c in pwd), f"Ambiguous char: {pwd}"
 
-driver.execute_script("""
-  window.__testClipboard = {
-    value: "",
-    writeText: async function(t){ this.value = t; }
-  };
-""")
-# click Copy, then:
-copied = driver.execute_script("return window.__testClipboard.value;")
-assert copied == expected_password
 
-def test_copy_button_shows_feedback(driver):
-
-    page = PasswordGeneratorPage(driver).open()
+def test_copy_button_shows_feedback_and_copies_via_test_shim(page, driver):
     page.set_length(12).generate()
-
     pwd = page.password()
     assert pwd, "Password should exist before copying"
 
+    # Test shim: app should prefer window.__testClipboard.writeText if present
+    driver.execute_script(
+        """
+        window.__testClipboard = {
+          value: "",
+          writeText: async function(t){ this.value = t; }
+        };
+        """
+    )
+
     page.copy()
+
+    # Feedback text
     WebDriverWait(driver, 5).until(
         EC.text_to_be_present_in_element((By.ID, "hint"), "Copied!")
-)
+    )
 
-import pytest
-
-@pytest.mark.skip(reason="Clipboard access unreliable in headless browsers")
-def test_copy_button_copies_password_to_clipboard(driver):
-    page = PasswordGeneratorPage(driver).open()
-    page.set_length(12).generate()
-
-    pwd = page.password()
-    page.copy()
-
-    copied = driver.execute_async_script("""
-        const done = arguments[0];
-        navigator.clipboard.readText()
-            .then(text => done(text))
-            .catch(() => done(null));
-    """)
-
+    # Verify copy went through shim (stable in headless CI)
+    copied = driver.execute_script("return window.__testClipboard.value;")
     assert copied == pwd, f"Clipboard mismatch: expected {pwd}, got {copied}"
 
