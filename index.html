@@ -134,6 +134,10 @@ window.__wordsLoaded = false;
 window.__wordsLoadError = "";
 window.__wordsLoadStarted = false;
 
+// Clipboard test hooks (used by Selenium in headless CI)
+window.__testClipboard = window.__testClipboard || null;
+window.__lastCopyOk = false;
+
 /* Clipboard test hooks */
 window.__testClipboard = window.__testClipboard || null;
 window.__lastCopyOk = false;
@@ -233,6 +237,30 @@ async function writeClipboard(text) {
   }
 
   // 3) Fallback copy
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "absolute";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  if (!ok) throw new Error("execCommand copy failed");
+}
+
+async function writeClipboard(text) {
+  // 1) Selenium/test shim (preferred)
+  if (window.__testClipboard?.writeText) {
+    return window.__testClipboard.writeText(text);
+  }
+
+  // 2) Standard clipboard API
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  // 3) Fallback copy for hostile environments
   const ta = document.createElement("textarea");
   ta.value = text;
   ta.setAttribute("readonly", "");
