@@ -208,6 +208,7 @@ function generate() {
   const sym = "*+-=?!@$"[randIndex(8)];
   const length = parseInt(lengthEl.value, 10);
 
+<<<<<<< HEAD
   if (length === 8) {
     // Always exactly 8 chars: 6 letters + digit + symbol
     let base6 = w1 + w2;
@@ -219,6 +220,28 @@ function generate() {
 
   let base = w1 + w2;
   while (base.length < length - 2) base += pickWord();
+=======
+  let base = w1 + w2;
+
+if (length === 8) {
+  let letters = w1.slice(0, 3) + w2.slice(0, 3);
+
+  // Guarantee at least one ASCII uppercase A-Z in the letters portion.
+  // Avoid turning i/o into I/O (your tests reject I and O as ambiguous).
+  if (!/[A-Z]/.test(letters)) {
+    const idx = letters.search(/[a-hj-np-z]/); // skips i and o
+    const i = idx >= 0 ? idx : 0;
+    letters = letters.slice(0, i) + letters[i].toUpperCase() + letters.slice(i + 1);
+  }
+
+  passwordEl.textContent = letters + num + sym;
+  return;
+}
+
+  while (base.length < length - 2) {
+    base += pickWord();
+  }
+>>>>>>> 3140562 (Fix 8-char mode to always include uppercase (avoid I/O))
 
   const mid = Math.floor(base.length / 2);
   passwordEl.textContent =
