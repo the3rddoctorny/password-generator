@@ -8,6 +8,10 @@ from selenium.webdriver.common.by import By
 AMBIGUOUS = set("I0O")
 SYMBOLS = set("*+-=?!@$")
 
+WebDriverWait(driver, 10).until(
+    lambda d: d.execute_script("return window.__wordsLoaded === true;")
+)
+
 @pytest.mark.parametrize(
     "length",
     [8, 12, 15],
@@ -45,6 +49,16 @@ def test_password_rules_hold_across_multiple_generations(driver):
             assert re.search(r"[0-9]", pwd), f"No number: {pwd}"
             assert any(c in SYMBOLS for c in pwd), f"No symbol: {pwd}"
             assert not any(c in AMBIGUOUS for c in pwd), f"Ambiguous char: {pwd}"
+
+driver.execute_script("""
+  window.__testClipboard = {
+    value: "",
+    writeText: async function(t){ this.value = t; }
+  };
+""")
+# click Copy, then:
+copied = driver.execute_script("return window.__testClipboard.value;")
+assert copied == expected_password
 
 def test_copy_button_shows_feedback(driver):
 

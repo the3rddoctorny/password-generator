@@ -122,15 +122,21 @@ button.secondary {
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version">v1.4.2 • wordlist v1 (1024)</div>
+    <div class="version">v1.4.3 • wordlist v1 (1024)</div>
   </div>
 </main>
+
+<script src="./assets/words_v1.js"></script>
 
 <script>
 /* Selenium-visible state */
 window.__wordsLoaded = false;
 window.__wordsLoadError = "";
 window.__wordsLoadStarted = false;
+
+/* Clipboard test hooks */
+window.__testClipboard = window.__testClipboard || null;
+window.__lastCopyOk = false;
 
 let WORDS = [];
 
@@ -154,12 +160,20 @@ function pickWord() {
 
 async function loadWords() {
   try {
+    // Prefer script-loaded words (works for file:// and avoids fetch flake)
+    if (Array.isArray(window.WORDS_V1) && window.WORDS_V1.length >= 1024) {
+      WORDS = window.WORDS_V1;
+      window.__wordsLoaded = true;
+      window.__wordsLoadError = "";
+      return;
+    }
+
+    // Fallback to fetch (fine when served over http://localhost in tests/CI)
     const res = await fetch("./assets/words_v1.json", { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!Array.isArray(data) || data.length < 1024) {
-      throw new Error("Invalid word list");
-    }
+    if (!Array.isArray(data) || data.length < 1024) throw new Error("Invalid word list");
+
     WORDS = data;
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
@@ -190,29 +204,60 @@ function generate() {
   const sym = "*+-=?!@$"[randIndex(8)];
   const length = parseInt(lengthEl.value, 10);
 
-  let base = w1 + w2;
-
   if (length === 8) {
-    passwordEl.textContent =
-      w1.slice(0,3) + w2.slice(0,3) + num + sym;
+    // Always exactly 8 chars: 6 letters + digit + symbol
+    let base6 = w1 + w2;
+    while (base6.length < 6) base6 += pickWord();
+    base6 = base6.slice(0, 6);
+    passwordEl.textContent = base6 + num + sym;
     return;
   }
 
-  while (base.length < length - 2) {
-    base += pickWord();
-  }
+  let base = w1 + w2;
+  while (base.length < length - 2) base += pickWord();
 
   const mid = Math.floor(base.length / 2);
   passwordEl.textContent =
     (base.slice(0, mid) + num + sym + base.slice(mid)).slice(0, length);
 }
 
+async function writeClipboard(text) {
+  // 1) Selenium/test shim
+  if (window.__testClipboard?.writeText) {
+    return window.__testClipboard.writeText(text);
+  }
+
+  // 2) Standard clipboard API
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  // 3) Fallback copy
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "absolute";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  if (!ok) throw new Error("execCommand copy failed");
+}
+
 async function copyPassword() {
   const pwd = passwordEl.textContent;
   if (!pwd) return;
-  await navigator.clipboard.writeText(pwd);
-  hintEl.textContent = "Copied!";
-  setTimeout(() => hintEl.textContent = "", 1200);
+
+  try {
+    await writeClipboard(pwd);
+    window.__lastCopyOk = true;
+    hintEl.textContent = "Copied!";
+    setTimeout(() => hintEl.textContent = "", 1200);
+  } catch (e) {
+    window.__lastCopyOk = false;
+    hintEl.textContent = "Copy failed";
+  }
 }
 
 $("generate").addEventListener("click", generate);
