@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.8.0 -->
+<!-- Password Generator v1.9.1 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -425,7 +425,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.8.0 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.1 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -438,12 +438,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.8.0 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.1 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.8.0 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.1 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }
 }
