@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.6.0 -->
+<!-- Password Generator v1.7.0 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -42,7 +42,7 @@ body {
   background: var(--card);
   padding: 24px 28px;
   border-radius: 14px;
-  width: 340px;
+  width: 360px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
   text-align: center;
 }
@@ -86,8 +86,32 @@ button.secondary {
   word-break: break-word;
   min-height: 1.2em;
   cursor: pointer;
-  outline: 2px solid var(--accent); 
+}
+
+.password:focus {
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.strength {
+  font-size: .85em;
+  color: var(--muted);
+  margin-top: 8px;
+  min-height: 1em;
+  text-align: left;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.toggleRow input {
+  width: auto;
+  margin: 0;
 }
 
 .hint {
@@ -102,14 +126,6 @@ button.secondary {
   color: var(--muted);
   margin-top: 8px;
   text-align: right;
-}
-
-.strength {
-  font-size: .85em;
-  color: var(--muted);
-  margin-top: 8px;
-  min-height: 1em;
-  text-align: left;
 }
 
 .hidden {
@@ -143,6 +159,16 @@ button.secondary {
       <option value="4">4 words</option>
     </select>
 
+    <label class="toggleRow" for="includeDigit">
+      <input type="checkbox" id="includeDigit" checked>
+      Include digit
+    </label>
+
+    <label class="toggleRow" for="includeSymbol">
+      <input type="checkbox" id="includeSymbol" checked>
+      Include symbol
+    </label>
+
     <button id="generate" type="button">Generate</button>
 
     <div class="password" id="password" aria-live="polite" role="button" tabindex="0"></div>
@@ -151,9 +177,12 @@ button.secondary {
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.6.0 • loading words...</div>
+    <div class="version" id="version">v1.7.0 • loading words...</div>
   </div>
 </main>
+
+<!-- Prefer script-loaded words (works for file:// and avoids fetch flake) -->
+<script src="./assets/words_v1.js"></script>
 
 <script>
 /* Selenium-visible state (harmless outside tests) */
@@ -165,19 +194,23 @@ window.__wordsLoadStarted = false;
 window.__testClipboard = window.__testClipboard || null;
 window.__lastCopyOk = false;
 
+const FALLBACK_WORDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 'mango', 'nectar', 'olive', 'pasta', 'quartz', 'rocket', 'silver', 'tango', 'umbra', 'vivid', 'whiskey', 'xenon', 'yankee', 'zebra', 'apricot', 'basil', 'canyon', 'dragon', 'ember', 'frost', 'galaxy', 'harbor', 'icicle', 'jungle', 'karma', 'lantern', 'meteor', 'noodle', 'orbit', 'pocket', 'quiet', 'raven', 'saffron', 'thunder', 'utopia', 'velvet', 'wander', 'yellow', 'zenith', 'butter', 'cobalt', 'cookie', 'dynamo', 'fabric', 'gadget', 'hazelnut', 'island', 'jacket', 'kitten', 'lemon', 'marble', 'napkin', 'ocean', 'pepper', 'picnic', 'quantum', 'ripple', 'sunset', 'teapot', 'unicorn', 'violet', 'walnut', 'winter'];
+
 let WORDS = [];
 
 const $ = (id) => document.getElementById(id);
 const passwordEl = $("password");
+const strengthEl = $("strength");
 const hintEl = $("hint");
 const versionEl = $("version");
-const strengthEl = $("strength");
 
 const modeEl = $("mode");
 const lengthEl = $("length");
 const wordCountEl = $("wordCount");
 const lengthLabelEl = $("lengthLabel");
 const wordCountLabelEl = $("wordCountLabel");
+const includeDigitEl = $("includeDigit");
+const includeSymbolEl = $("includeSymbol");
 
 function randIndex(max) {
   if (crypto && crypto.getRandomValues) {
@@ -188,8 +221,21 @@ function randIndex(max) {
   return Math.floor(Math.random() * max);
 }
 
+function sanitizeWord(w) {
+  if (typeof w !== "string") return "";
+  return w.trim().toLowerCase().replace(/[^a-z]/g, "");
+}
+
 function pickWord() {
   return WORDS[randIndex(WORDS.length)];
+}
+
+function pickDigit() {
+  return "123456789"[randIndex(9)];
+}
+
+function pickSymbol() {
+  return "*+-=?!@$"[randIndex(8)];
 }
 
 function setModeUI() {
@@ -202,63 +248,47 @@ function setModeUI() {
   wordCountEl.classList.toggle("hidden", !isWords);
 }
 
-function strengthRating(pwd) {
-  if (!pwd) return "";
-
-  const len = pwd.length;
-  const hasUpper = /[A-Z]/.test(pwd);
-  const hasLower = /[a-z]/.test(pwd);
-  const hasDigit = /[0-9]/.test(pwd);
-  const hasSymbol = /[*+\-=?!@$]/.test(pwd);
-
-  const types = [hasUpper, hasLower, hasDigit, hasSymbol].filter(Boolean).length;
-
-  // “Honest” rating: mostly length + variety.
-  let rating = "Weak";
-  if (len >= 12 && types >= 3) rating = "Good";
-  if (len >= 15 && types === 4) rating = "Strong";
-
-  // If you're in Word Count mode, reflect that in the display (not the score).
-  const mode = modeEl.value;
-  const modeDetail = (mode === "words")
-    ? `${parseInt(wordCountEl.value, 10)} words`
-    : `${parseInt(lengthEl.value, 10)} chars target`;
-
-  const mixDetail = `${types}/4 types`;
-  return `Strength: ${rating} • ${len} chars • ${modeDetail} • ${mixDetail}`;
-}
-
-function updateStrength() {
-  strengthEl.textContent = strengthRating(passwordEl.textContent);
-}
-
 async function loadWords() {
   try {
-    const res = await fetch("./assets/words_v1.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length < 1024) {
-      throw new Error("Invalid word list");
+    // Script-loaded words (fast path)
+    if (Array.isArray(window.WORDS_V1) && window.WORDS_V1.length >= 1024) {
+      WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
+      window.__wordsLoaded = true;
+      window.__wordsLoadError = "";
+      versionEl.textContent = `v1.7.0 • wordlist: assets-js (${WORDS.length})`;
+      return;
     }
 
-    WORDS = data;
+    // Fetch JSON wordlist (http://localhost / GitHub Pages)
+    const res = await fetch("./assets/words_v1.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length < 1024) throw new Error("Invalid word list");
+
+    WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.6.0 • wordlist: assets (${WORDS.length})`;
+    versionEl.textContent = `v1.7.0 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
-    window.__wordsLoaded = false;
+    WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
+    window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    hintEl.textContent = "Word list failed to load";
-    versionEl.textContent = "v1.6.0 • wordlist: failed";
+    versionEl.textContent = `v1.7.0 • wordlist: fallback (${WORDS.length})`;
+    hintEl.textContent = "Word list failed to load (using fallback)";
   }
 }
 
-function generateLengthMode(length, num, sym) {
+function ensureUppercase(s) {
+  if (/[A-Z]/.test(s)) return s;
+  // Force one uppercase in the first letter-ish position
+  return s.length ? (s[0].toUpperCase() + s.slice(1)) : s;
+}
+
+function generateLengthMode(length, suffix) {
   let w1 = pickWord();
   let w2 = pickWord();
 
-  // Capitalize exactly one word
+  // Capitalize exactly one word so we always have an uppercase letter
   if (randIndex(2) === 0) {
     w1 = w1[0].toUpperCase() + w1.slice(1);
   } else {
@@ -266,20 +296,18 @@ function generateLengthMode(length, num, sym) {
   }
 
   let base = w1 + w2;
+  const target = Math.max(length - suffix.length, 0);
 
-  if (length === 8) {
-    return w1.slice(0, 3) + w2.slice(0, 3) + num + sym;
-  }
-
-  while (base.length < length - 2) {
+  while (base.length < target) {
     base += pickWord();
   }
 
   const mid = Math.floor(base.length / 2);
-  return (base.slice(0, mid) + num + sym + base.slice(mid)).slice(0, length);
+  const out = (base.slice(0, mid) + suffix + base.slice(mid)).slice(0, length);
+  return ensureUppercase(out);
 }
 
-function generateWordMode(wordCount, num, sym) {
+function generateWordMode(wordCount, suffix) {
   const words = [];
   for (let i = 0; i < wordCount; i++) {
     words.push(pickWord());
@@ -289,8 +317,37 @@ function generateWordMode(wordCount, num, sym) {
   const capIndex = randIndex(words.length);
   words[capIndex] = words[capIndex][0].toUpperCase() + words[capIndex].slice(1);
 
-  // Keep it readable: words stay intact; number+symbol go at the end
-  return words.join("") + num + sym;
+  return ensureUppercase(words.join("") + suffix);
+}
+
+function strengthRating(pwd) {
+  if (!pwd) return "";
+
+  const len = pwd.length;
+  const hasUpper = /[A-Z]/.test(pwd);
+  const hasLower = /[a-z]/.test(pwd);
+  const hasDigit = /[0-9]/.test(pwd);
+  const hasSymbol = /[*+\-=?!@$]/.test(pwd);
+  const types = [hasUpper, hasLower, hasDigit, hasSymbol].filter(Boolean).length;
+
+  let rating = "Weak";
+  if (len >= 12 && types >= 3) rating = "Good";
+  if (len >= 15 && types === 4) rating = "Strong";
+
+  const modeDetail = (modeEl.value === "words")
+    ? `${parseInt(wordCountEl.value, 10)} words`
+    : `${parseInt(lengthEl.value, 10)} chars target`;
+
+  const policy = [
+    includeDigitEl.checked ? "digit" : "no digit",
+    includeSymbolEl.checked ? "symbol" : "no symbol",
+  ].join(", ");
+
+  return `Strength: ${rating} • ${len} chars • ${modeDetail} • ${types}/4 types • ${policy}`;
+}
+
+function updateStrength() {
+  strengthEl.textContent = strengthRating(passwordEl.textContent);
 }
 
 function generate() {
@@ -302,19 +359,20 @@ function generate() {
     return;
   }
 
-  const num = "123456789"[randIndex(9)];
-  const sym = "*+-=?!@$"[randIndex(8)];
+  const suffix =
+    (includeDigitEl.checked ? pickDigit() : "") +
+    (includeSymbolEl.checked ? pickSymbol() : "");
 
   const mode = modeEl.value;
   if (mode === "words") {
     const wc = parseInt(wordCountEl.value, 10);
-    passwordEl.textContent = generateWordMode(wc, num, sym);
+    passwordEl.textContent = generateWordMode(wc, suffix);
     updateStrength();
     return;
   }
 
   const length = parseInt(lengthEl.value, 10);
-  passwordEl.textContent = generateLengthMode(length, num, sym);
+  passwordEl.textContent = generateLengthMode(length, suffix);
   updateStrength();
 }
 
@@ -363,8 +421,11 @@ async function copyPassword() {
   const pwd = passwordEl.textContent.trim();
   if (!pwd) return;
 
+  window.__lastCopyOk = false;
+
   try {
     await writeClipboard(pwd);
+    window.__lastCopyOk = true;
 
     hintEl.textContent = "Copied!";
     setCopyUI("copied");
@@ -374,7 +435,8 @@ async function copyPassword() {
       setCopyUI("reset");
     }, 1200);
 
-  } catch (_) {
+  } catch (e) {
+    window.__lastCopyOk = false;
     hintEl.textContent = "Copy failed";
     setCopyUI("failed");
 
@@ -385,14 +447,11 @@ async function copyPassword() {
   }
 }
 
-
 $("generate").addEventListener("click", generate);
 $("copy").addEventListener("click", copyPassword);
 
 // Click-to-copy on the password itself
 passwordEl.addEventListener("click", copyPassword);
-
-// Keyboard access: Enter/Space when password box is focused
 passwordEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();
@@ -413,17 +472,20 @@ lengthEl.addEventListener("change", () => {
   if (modeEl.value === "length") generate();
 });
 
+includeDigitEl.addEventListener("change", generate);
+includeSymbolEl.addEventListener("change", generate);
+
 document.addEventListener("keydown", (e) => {
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON") return;
   if (e.key === "Enter") generate();
 });
 
 window.addEventListener("load", async () => {
   setModeUI();
-
   window.__wordsLoadStarted = true;
   await loadWords();
-  if (window.__wordsLoaded) generate();
-  updateStrength();
+  generate();
 });
 </script>
 </body>
