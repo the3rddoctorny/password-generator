@@ -131,13 +131,79 @@ button.secondary {
 .hidden {
   display: none;
 }
+
+.headerRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.headerRow h1{ margin:0; }
+.ghost{
+  background:transparent;
+  border:1px solid var(--secondary);
+  color:var(--accent);
+  padding:8px 12px;
+  border-radius:999px;
+  font-weight:600;
+  cursor:pointer;
+}
+.ghost:hover{ background:var(--secondary); }
+.ghost:focus{ outline:2px solid var(--accent); outline-offset:2px; }
+
+.modalOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:9999;
+}
+.modalDialog{
+  width:100%;
+  max-width:560px;
+  background:var(--card);
+  color:var(--text);
+  border-radius:16px;
+  box-shadow:0 14px 40px rgba(0,0,0,.25);
+  padding:18px 18px 16px;
+}
+.modalHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.modalHeader h2{
+  font-size:1.05em;
+  margin:0;
+}
+.modalBody{
+  margin-top:10px;
+  color:var(--text);
+}
+.modalBody p{ margin:10px 0; }
+.modalBody ul{
+  margin:8px 0 12px 18px;
+}
+.modalBody li{ margin:6px 0; }
+.smallNote{
+  font-size:.85em;
+  color:var(--muted);
+}
+
 </style>
 </head>
 
 <body>
 <main>
   <div class="card">
-    <h1>Password Generator</h1>
+    <div class="headerRow">
+      <h1>Password Generator</h1>
+      <button id="helpBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="helpOverlay">Help</button>
+    </div>
 
     <label for="mode" id="modeLabel">Mode</label>
     <select id="mode">
@@ -218,6 +284,28 @@ button.secondary {
   </div>
 </main>
 
+
+<div id="helpOverlay" class="modalOverlay" hidden>
+  <div class="modalDialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modalHeader">
+      <h2 id="helpTitle">How to use this thing</h2>
+      <button id="helpClose" class="secondary" type="button" aria-label="Close help">Close</button>
+    </div>
+    <div class="modalBody">
+      <p>This generator makes passwords from a word list so they’re easier to remember, while still meeting common “picky website” rules.</p>
+      <ul>
+        <li><strong>Mode</strong>: Use <em>Word count</em> for readable passwords (2–4 full words). Use <em>Exact length</em> when a site demands a specific length.</li>
+        <li><strong>Digits/Symbols</strong>: Toggle <em>Include digit</em> and <em>Include symbol</em>. If symbols are on, choose the allowed symbol set.</li>
+        <li><strong>Title Case & Separator</strong>: In Word count mode you can format words as <em>RocketSilver</em> and optionally add separators like <em>Rocket-Silver-7!</em>.</li>
+        <li><strong>Generate</strong>: Click <em>Generate</em> or press <strong>Enter</strong>.</li>
+        <li><strong>Copy</strong>: Click <em>Copy</em> or click the password itself to copy it. You’ll see “Copied!” confirmation.</li>
+      </ul>
+      <p class="smallNote">Word list status is shown at the bottom (assets vs fallback). If it says fallback, your browser couldn’t load the external list.</p>
+    </div>
+  </div>
+</div>
+
+
 <!-- Prefer script-loaded words (works for file:// and avoids fetch flake) -->
 <script src="./assets/words_v1.js"></script>
 
@@ -256,6 +344,10 @@ const customSymbolsEl = $("customSymbols");
 const symbolControlsEl = $("symbolControls");
 const titleCaseEl = $("titleCase");
 const separatorEl = $("separator");
+const helpOverlayEl = $("helpOverlay");
+const helpCloseEl = $("helpClose");
+const helpBtnEl = $("helpBtn");
+
 const wordStyleControlsEl = $("wordStyleControls");
 
 
@@ -600,6 +692,28 @@ document.addEventListener("keydown", (e) => {
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
   if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON") return;
   if (e.key === "Enter") generate();
+});
+
+
+function openHelp(){
+  helpOverlayEl.hidden = false;
+  // focus close for accessibility
+  helpCloseEl.focus();
+}
+function closeHelp(){
+  helpOverlayEl.hidden = true;
+  // return focus to help button
+  helpBtnEl.focus();
+}
+
+// Help interactions
+helpBtnEl.addEventListener("click", openHelp);
+helpCloseEl.addEventListener("click", closeHelp);
+helpOverlayEl.addEventListener("click", (e) => {
+  if (e.target === helpOverlayEl) closeHelp();
+});
+document.addEventListener("keydown", (e) => {
+  if (!helpOverlayEl.hidden && e.key === "Escape") closeHelp();
 });
 
 window.addEventListener("load", async () => {
