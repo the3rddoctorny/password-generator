@@ -203,6 +203,9 @@ $("generate").addEventListener("click", generate);
 $("copy").addEventListener("click", copyPassword);
 lengthEl.addEventListener("change", generate);
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") generate();
+
 window.addEventListener("load", async () => {
   await loadWords();
   generate();
