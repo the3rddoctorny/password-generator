@@ -6,4 +6,4 @@ Static password generator using an external word list.
 From the repo root:
 
 ```bash
-python -m http.server 8001
+python -m http.server 8000
