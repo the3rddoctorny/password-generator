@@ -101,6 +101,14 @@ button.secondary {
   text-align: right;
 }
 
+.strength {
+  font-size: .85em;
+  color: var(--muted);
+  margin-top: 8px;
+  min-height: 1em;
+  text-align: left;
+}
+
 .hidden {
   display: none;
 }
@@ -135,6 +143,7 @@ button.secondary {
     <button id="generate" type="button">Generate</button>
 
     <div class="password" id="password" aria-live="polite"></div>
+    <div class="strength" id="strength" aria-live="polite"></div>
 
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
@@ -159,6 +168,7 @@ const $ = (id) => document.getElementById(id);
 const passwordEl = $("password");
 const hintEl = $("hint");
 const versionEl = $("version");
+const strengthEl = $("strength");
 
 const modeEl = $("mode");
 const lengthEl = $("length");
@@ -187,6 +197,36 @@ function setModeUI() {
 
   wordCountLabelEl.classList.toggle("hidden", !isWords);
   wordCountEl.classList.toggle("hidden", !isWords);
+}
+
+function strengthRating(pwd) {
+  if (!pwd) return "";
+
+  const len = pwd.length;
+  const hasUpper = /[A-Z]/.test(pwd);
+  const hasLower = /[a-z]/.test(pwd);
+  const hasDigit = /[0-9]/.test(pwd);
+  const hasSymbol = /[*+\-=?!@$]/.test(pwd);
+
+  const types = [hasUpper, hasLower, hasDigit, hasSymbol].filter(Boolean).length;
+
+  // “Honest” rating: mostly length + variety.
+  let rating = "Weak";
+  if (len >= 12 && types >= 3) rating = "Good";
+  if (len >= 15 && types === 4) rating = "Strong";
+
+  // If you're in Word Count mode, reflect that in the display (not the score).
+  const mode = modeEl.value;
+  const modeDetail = (mode === "words")
+    ? `${parseInt(wordCountEl.value, 10)} words`
+    : `${parseInt(lengthEl.value, 10)} chars target`;
+
+  const mixDetail = `${types}/4 types`;
+  return `Strength: ${rating} • ${len} chars • ${modeDetail} • ${mixDetail}`;
+}
+
+function updateStrength() {
+  strengthEl.textContent = strengthRating(passwordEl.textContent);
 }
 
 async function loadWords() {
@@ -255,6 +295,7 @@ function generate() {
 
   if (!window.__wordsLoaded) {
     passwordEl.textContent = "";
+    strengthEl.textContent = "";
     return;
   }
 
@@ -265,11 +306,13 @@ function generate() {
   if (mode === "words") {
     const wc = parseInt(wordCountEl.value, 10);
     passwordEl.textContent = generateWordMode(wc, num, sym);
+    updateStrength();
     return;
   }
 
   const length = parseInt(lengthEl.value, 10);
   passwordEl.textContent = generateLengthMode(length, num, sym);
+  updateStrength();
 }
 
 async function copyPassword() {
@@ -317,6 +360,7 @@ window.addEventListener("load", async () => {
   window.__wordsLoadStarted = true;
   await loadWords();
   if (window.__wordsLoaded) generate();
+  updateStrength();
 });
 </script>
 </body>
