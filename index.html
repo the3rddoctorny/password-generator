@@ -85,6 +85,9 @@ button.secondary {
   user-select: all;
   word-break: break-word;
   min-height: 1.2em;
+  cursor: pointer;
+  outline: 2px solid var(--accent); 
+  outline-offset: 2px;
 }
 
 .hint {
@@ -142,7 +145,7 @@ button.secondary {
 
     <button id="generate" type="button">Generate</button>
 
-    <div class="password" id="password" aria-live="polite"></div>
+    <div class="password" id="password" aria-live="polite" role="button" tabindex="0"></div>
     <div class="strength" id="strength" aria-live="polite"></div>
 
     <button id="copy" class="secondary" type="button">Copy</button>
@@ -315,27 +318,87 @@ function generate() {
   updateStrength();
 }
 
-async function copyPassword() {
-  const pwd = passwordEl.textContent;
-  if (!pwd) return;
-
-  window.__lastCopyOk = false;
-
-  // Prefer test shim when present (stable in headless)
-  if (window.__testClipboard && typeof window.__testClipboard.writeText === "function") {
-    await window.__testClipboard.writeText(pwd);
-    window.__lastCopyOk = true;
-  } else if (navigator.clipboard && navigator.clipboard.writeText) {
-    await navigator.clipboard.writeText(pwd);
-    window.__lastCopyOk = true;
+async function writeClipboard(text) {
+  // Test shim (headless-friendly)
+  if (window.__testClipboard?.writeText) {
+    await window.__testClipboard.writeText(text);
+    return;
   }
 
-  hintEl.textContent = "Copied!";
-  setTimeout(() => (hintEl.textContent = ""), 1200);
+  // Real clipboard API
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  // Fallback (older browsers)
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "absolute";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
 }
+
+function setCopyUI(state) {
+  const btn = $("copy");
+  if (state === "copied") {
+    btn.dataset.prev = btn.textContent;
+    btn.textContent = "Copied!";
+    btn.disabled = true;
+  } else if (state === "reset") {
+    btn.textContent = btn.dataset.prev || "Copy";
+    btn.disabled = false;
+  } else if (state === "failed") {
+    btn.dataset.prev = btn.textContent;
+    btn.textContent = "Copy failed";
+    btn.disabled = false;
+  }
+}
+
+async function copyPassword() {
+  const pwd = passwordEl.textContent.trim();
+  if (!pwd) return;
+
+  try {
+    await writeClipboard(pwd);
+
+    hintEl.textContent = "Copied!";
+    setCopyUI("copied");
+
+    setTimeout(() => {
+      hintEl.textContent = "";
+      setCopyUI("reset");
+    }, 1200);
+
+  } catch (_) {
+    hintEl.textContent = "Copy failed";
+    setCopyUI("failed");
+
+    setTimeout(() => {
+      hintEl.textContent = "";
+      setCopyUI("reset");
+    }, 1500);
+  }
+}
+
 
 $("generate").addEventListener("click", generate);
 $("copy").addEventListener("click", copyPassword);
+
+// Click-to-copy on the password itself
+passwordEl.addEventListener("click", copyPassword);
+
+// Keyboard access: Enter/Space when password box is focused
+passwordEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    copyPassword();
+  }
+});
 
 modeEl.addEventListener("change", () => {
   setModeUI();
