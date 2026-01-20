@@ -169,6 +169,27 @@ button.secondary {
       Include symbol
     </label>
 
+<div id="symbolControls" style="margin-top:8px; margin-left:26px;">
+  <label style="display:block; font-size:.9em; color:var(--muted); margin-bottom:6px;">
+    Symbol set
+  </label>
+  <select id="symbolSet" style="width:100%; padding:10px; border-radius:10px; border:none;">
+    <option value="basic" selected>Basic (!@$?*)</option>
+    <option value="extended">Extended (!@$?*+-=)</option>
+    <option value="custom">Custom</option>
+  </select>
+
+  <input
+    id="customSymbols"
+    type="text"
+    placeholder="Enter allowed symbols, e.g. !@#$"
+    style="width:100%; margin-top:8px; padding:10px; border-radius:10px; border:none; display:none;"
+    autocomplete="off"
+    spellcheck="false"
+  />
+</div>
+
+
     <button id="generate" type="button">Generate</button>
 
     <div class="password" id="password" aria-live="polite" role="button" tabindex="0"></div>
@@ -194,6 +215,9 @@ window.__wordsLoadStarted = false;
 window.__testClipboard = window.__testClipboard || null;
 window.__lastCopyOk = false;
 
+const SYMBOLS_BASIC = "!@$?*";
+const SYMBOLS_EXTENDED = "!@$?*+-=";
+
 const FALLBACK_WORDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 'mango', 'nectar', 'olive', 'pasta', 'quartz', 'rocket', 'silver', 'tango', 'umbra', 'vivid', 'whiskey', 'xenon', 'yankee', 'zebra', 'apricot', 'basil', 'canyon', 'dragon', 'ember', 'frost', 'galaxy', 'harbor', 'icicle', 'jungle', 'karma', 'lantern', 'meteor', 'noodle', 'orbit', 'pocket', 'quiet', 'raven', 'saffron', 'thunder', 'utopia', 'velvet', 'wander', 'yellow', 'zenith', 'butter', 'cobalt', 'cookie', 'dynamo', 'fabric', 'gadget', 'hazelnut', 'island', 'jacket', 'kitten', 'lemon', 'marble', 'napkin', 'ocean', 'pepper', 'picnic', 'quantum', 'ripple', 'sunset', 'teapot', 'unicorn', 'violet', 'walnut', 'winter'];
 
 let WORDS = [];
@@ -211,6 +235,9 @@ const lengthLabelEl = $("lengthLabel");
 const wordCountLabelEl = $("wordCountLabel");
 const includeDigitEl = $("includeDigit");
 const includeSymbolEl = $("includeSymbol");
+const symbolSetEl = $("symbolSet");
+const customSymbolsEl = $("customSymbols");
+const symbolControlsEl = $("symbolControls");
 
 function randIndex(max) {
   if (crypto && crypto.getRandomValues) {
@@ -234,8 +261,30 @@ function pickDigit() {
   return "123456789"[randIndex(9)];
 }
 
+function currentSymbolSet() {
+  const mode = symbolSetEl?.value || "basic";
+  if (mode === "extended") return SYMBOLS_EXTENDED;
+  if (mode === "custom") {
+    const s = (customSymbolsEl.value || "").trim();
+    // Keep only non-alphanumeric characters, dedupe
+    const cleaned = Array.from(new Set(s.split("").filter(ch => !/[A-Za-z0-9\s]/.test(ch)))).join("");
+    return cleaned || SYMBOLS_BASIC; // fallback so we never end up with empty set
+  }
+  return SYMBOLS_BASIC;
+}
+
+function refreshSymbolUI() {
+  const enabled = includeSymbolEl.checked;
+  symbolSetEl.disabled = !enabled;
+  symbolControlsEl.style.opacity = enabled ? "1" : "0.5";
+
+  const isCustom = enabled && symbolSetEl.value === "custom";
+  customSymbolsEl.style.display = isCustom ? "block" : "none";
+}
+
 function pickSymbol() {
-  return "*+-=?!@$"[randIndex(8)];
+  const set = currentSymbolSet();
+  return set[randIndex(set.length)];
 }
 
 function setModeUI() {
@@ -473,7 +522,19 @@ lengthEl.addEventListener("change", () => {
 });
 
 includeDigitEl.addEventListener("change", generate);
-includeSymbolEl.addEventListener("change", generate);
+includeSymbolEl.addEventListener("change", () => {
+  refreshSymbolUI();
+  generate();
+});
+
+symbolSetEl.addEventListener("change", () => {
+  refreshSymbolUI();
+  generate();
+});
+
+customSymbolsEl.addEventListener("input", () => {
+  if (includeSymbolEl.checked && symbolSetEl.value === "custom") generate();
+});
 
 document.addEventListener("keydown", (e) => {
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
@@ -484,6 +545,7 @@ document.addEventListener("keydown", (e) => {
 window.addEventListener("load", async () => {
   setModeUI();
   window.__wordsLoadStarted = true;
+  refreshSymbolUI();
   await loadWords();
   generate();
 });
