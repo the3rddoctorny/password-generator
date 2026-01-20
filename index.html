@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.5.1 (wordlist-based, external JSON with fallback) -->
+<!-- Password Generator v1.6.0 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,30 +7,103 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-:root { --bg:#f2f2f7; --card:#fff; --text:#000; --muted:#666; --accent:#005fcc; --secondary:#e5e5ea; }
-@media (prefers-color-scheme: dark){
-  :root { --bg:#1c1c1e; --card:#2c2c2e; --text:#fff; --muted:#aaa; --accent:#0a84ff; --secondary:#3a3a3c; }
+:root {
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --text: #000;
+  --muted: #666;
+  --accent: #005fcc;
+  --secondary: #e5e5ea;
 }
-body{
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:var(--text);
-  display:flex; justify-content:center; align-items:center; height:100vh; margin:0;
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --card: #2c2c2e;
+    --text: #fff;
+    --muted: #aaa;
+    --accent: #0a84ff;
+    --secondary: #3a3a3c;
+  }
 }
-.card{
-  background:var(--card); padding:24px 28px; border-radius:14px; width:340px;
-  box-shadow:0 10px 30px rgba(0,0,0,.25); text-align:center;
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
 }
-h1{ font-size:1.3em; margin:0 0 18px; }
-label, select, button{ width:100%; font-size:1em; margin-top:10px; }
-select, button{ padding:10px; border-radius:10px; border:none; }
-button{ background:var(--accent); color:#fff; cursor:pointer; }
-button.secondary{ background:var(--secondary); color:var(--text); }
-.password{
-  margin-top:18px; padding:14px; background:var(--secondary);
-  border-radius:10px; font-family:monospace; font-size:1.1em;
-  user-select:all; word-break:break-word; min-height:1.2em;
+
+.card {
+  background: var(--card);
+  padding: 24px 28px;
+  border-radius: 14px;
+  width: 340px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  text-align: center;
 }
-.hint{ font-size:.8em; color:var(--muted); margin-top:6px; min-height:1em; }
-.version{ font-size:.7em; color:var(--muted); margin-top:8px; text-align:right; }
+
+h1 {
+  font-size: 1.3em;
+  margin-bottom: 18px;
+}
+
+select, button, label {
+  font-size: 1em;
+  width: 100%;
+  margin-top: 10px;
+}
+
+select, button {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+}
+
+button {
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: var(--secondary);
+  color: var(--text);
+}
+
+.password {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--secondary);
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 1.1em;
+  user-select: all;
+  word-break: break-word;
+  min-height: 1.2em;
+}
+
+.hint {
+  font-size: .8em;
+  color: var(--muted);
+  margin-top: 6px;
+  min-height: 1em;
+}
+
+.version {
+  font-size: .7em;
+  color: var(--muted);
+  margin-top: 8px;
+  text-align: right;
+}
+
+.hidden {
+  display: none;
+}
 </style>
 </head>
 
@@ -39,11 +112,24 @@ button.secondary{ background:var(--secondary); color:var(--text); }
   <div class="card">
     <h1>Password Generator</h1>
 
-    <label for="length">Password length</label>
+    <label for="mode" id="modeLabel">Mode</label>
+    <select id="mode">
+      <option value="length" selected>Exact length</option>
+      <option value="words">Word count</option>
+    </select>
+
+    <label for="length" id="lengthLabel">Password length</label>
     <select id="length">
       <option value="8">8 characters</option>
       <option value="12" selected>12 characters</option>
       <option value="15">15 characters</option>
+    </select>
+
+    <label for="wordCount" id="wordCountLabel" class="hidden">Word count</label>
+    <select id="wordCount" class="hidden">
+      <option value="2" selected>2 words</option>
+      <option value="3">3 words</option>
+      <option value="4">4 words</option>
     </select>
 
     <button id="generate" type="button">Generate</button>
@@ -53,163 +139,184 @@ button.secondary{ background:var(--secondary); color:var(--text); }
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.5.1 • loading words…</div>
+    <div class="version" id="version">v1.6.0 • loading words...</div>
   </div>
 </main>
 
 <script>
-const $ = (id) => document.getElementById(id);
-const passwordEl = $("password");
-const hintEl = $("hint");
-const lengthEl = $("length");
-const versionEl = $("version");
+/* Selenium-visible state (harmless outside tests) */
+window.__wordsLoaded = false;
+window.__wordsLoadError = "";
+window.__wordsLoadStarted = false;
 
-const SYMBOLS = "*+-=?!@$";
-const DIGITS = "123456789"; // avoid 0
-const AMBIGUOUS = /[IO0]/g;
-
-// Small fallback list so the app doesn't brick if assets 404.
-const FALLBACK_WORDS = [
-  "herb","candy","silver","rocket","shadow","pepper","violet","winter","zodiac","basil",
-  "copper","forest","garden","harbor","lemon","mango","nectar","quartz","rabbit","saffron",
-  "tiger","velvet","whisper","yellow","zephyr","cactus","caramel","creamy","cherub","dragon",
-  "ginger","hazelnut","jasmine","meteor","sunset","willow","opal","saturn","tulip","walnut"
-];
+// Clipboard test hooks (used by headless tests)
+window.__testClipboard = window.__testClipboard || null;
+window.__lastCopyOk = false;
 
 let WORDS = [];
 
-function randIndex(max){
-  if (window.crypto?.getRandomValues) {
+const $ = (id) => document.getElementById(id);
+const passwordEl = $("password");
+const hintEl = $("hint");
+const versionEl = $("version");
+
+const modeEl = $("mode");
+const lengthEl = $("length");
+const wordCountEl = $("wordCount");
+const lengthLabelEl = $("lengthLabel");
+const wordCountLabelEl = $("wordCountLabel");
+
+function randIndex(max) {
+  if (crypto && crypto.getRandomValues) {
     const a = new Uint32Array(1);
-    window.crypto.getRandomValues(a);
+    crypto.getRandomValues(a);
     return a[0] % max;
   }
   return Math.floor(Math.random() * max);
 }
 
-function sanitizeWord(w){
-  return (w || "").toString().replace(/[^a-zA-Z]/g, "").toLowerCase();
-}
-
-function pickWord(){
+function pickWord() {
   return WORDS[randIndex(WORDS.length)];
 }
 
-function pickDigit(){ return DIGITS[randIndex(DIGITS.length)]; }
-function pickSymbol(){ return SYMBOLS[randIndex(SYMBOLS.length)]; }
+function setModeUI() {
+  const isWords = modeEl.value === "words";
 
-function avoidAmbiguous(s){
-  return s.replace(AMBIGUOUS, (ch) => {
-    if (ch === "0") return "8";
-    if (ch === "I") return "H";
-    if (ch === "O") return "Q";
-    return ch;
-  });
+  lengthLabelEl.classList.toggle("hidden", isWords);
+  lengthEl.classList.toggle("hidden", isWords);
+
+  wordCountLabelEl.classList.toggle("hidden", !isWords);
+  wordCountEl.classList.toggle("hidden", !isWords);
 }
 
-function ensureUppercaseAvoidIO(s){
-  if (/[A-Z]/.test(s)) return s;
-  // pick a position we can uppercase without becoming I/O
-  const idx = s.search(/[a-hj-np-z]/); // excludes i,o
-  const i = idx >= 0 ? idx : 0;
-  const up = (s[i] || "h").toUpperCase();
-  const safe = (up === "I" || up === "O") ? "H" : up;
-  return s.slice(0, i) + safe + s.slice(i + 1);
-}
-
-async function loadWords(){
-  hintEl.textContent = "";
+async function loadWords() {
   try {
     const res = await fetch("./assets/words_v1.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`words_v1.json HTTP ${res.status}`);
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length < 64) throw new Error("Invalid word list (expected JSON array of words)");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    WORDS = data.map(sanitizeWord).filter(Boolean);
-    versionEl.textContent = `v1.5.1 • wordlist: assets (${WORDS.length})`;
-    return;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length < 1024) {
+      throw new Error("Invalid word list");
+    }
+
+    WORDS = data;
+    window.__wordsLoaded = true;
+    window.__wordsLoadError = "";
+    versionEl.textContent = `v1.6.0 • wordlist: assets (${WORDS.length})`;
   } catch (e) {
-    WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
-    versionEl.textContent = `v1.5.1 • wordlist: fallback (${WORDS.length})`;
-    hintEl.textContent = "Could not load assets/words_v1.json, using fallback list.";
+    window.__wordsLoaded = false;
+    window.__wordsLoadError = String(e);
+    hintEl.textContent = "Word list failed to load";
+    versionEl.textContent = "v1.6.0 • wordlist: failed";
   }
 }
 
-function buildLetters(targetLen){
-  // Two-word base, then pad with more words if needed
-  let letters = pickWord() + pickWord();
-  while (letters.length < targetLen) letters += pickWord();
-  letters = letters.slice(0, targetLen);
-  letters = ensureUppercaseAvoidIO(letters);
-  return letters;
+function generateLengthMode(length, num, sym) {
+  let w1 = pickWord();
+  let w2 = pickWord();
+
+  // Capitalize exactly one word
+  if (randIndex(2) === 0) {
+    w1 = w1[0].toUpperCase() + w1.slice(1);
+  } else {
+    w2 = w2[0].toUpperCase() + w2.slice(1);
+  }
+
+  let base = w1 + w2;
+
+  if (length === 8) {
+    return w1.slice(0, 3) + w2.slice(0, 3) + num + sym;
+  }
+
+  while (base.length < length - 2) {
+    base += pickWord();
+  }
+
+  const mid = Math.floor(base.length / 2);
+  return (base.slice(0, mid) + num + sym + base.slice(mid)).slice(0, length);
 }
 
-function generate(){
+function generateWordMode(wordCount, num, sym) {
+  const words = [];
+  for (let i = 0; i < wordCount; i++) {
+    words.push(pickWord());
+  }
+
+  // Capitalize one whole word so we always have an uppercase letter
+  const capIndex = randIndex(words.length);
+  words[capIndex] = words[capIndex][0].toUpperCase() + words[capIndex].slice(1);
+
+  // Keep it readable: words stay intact; number+symbol go at the end
+  return words.join("") + num + sym;
+}
+
+function generate() {
   hintEl.textContent = "";
-  if (!WORDS.length) {
+
+  if (!window.__wordsLoaded) {
     passwordEl.textContent = "";
-    hintEl.textContent = "Word list not loaded yet.";
+    return;
+  }
+
+  const num = "123456789"[randIndex(9)];
+  const sym = "*+-=?!@$"[randIndex(8)];
+
+  const mode = modeEl.value;
+  if (mode === "words") {
+    const wc = parseInt(wordCountEl.value, 10);
+    passwordEl.textContent = generateWordMode(wc, num, sym);
     return;
   }
 
   const length = parseInt(lengthEl.value, 10);
-  const num = pickDigit();
-  const sym = pickSymbol();
-
-  if (length === 8) {
-    // 6 letters + digit + symbol
-    let pwd = buildLetters(6) + num + sym;
-    passwordEl.textContent = avoidAmbiguous(pwd);
-    return;
-  }
-
-  const lettersNeeded = Math.max(length - 2, 1);
-  const letters = buildLetters(lettersNeeded);
-  const mid = Math.floor(letters.length / 2);
-
-  let pwd = (letters.slice(0, mid) + num + sym + letters.slice(mid)).slice(0, length);
-  pwd = ensureUppercaseAvoidIO(pwd);
-  pwd = avoidAmbiguous(pwd);
-
-  passwordEl.textContent = pwd;
+  passwordEl.textContent = generateLengthMode(length, num, sym);
 }
 
-async function copyPassword(){
+async function copyPassword() {
   const pwd = passwordEl.textContent;
   if (!pwd) return;
 
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(pwd);
-    } else {
-      const ta = document.createElement("textarea");
-      ta.value = pwd;
-      ta.setAttribute("readonly", "");
-      ta.style.position = "absolute";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
-    hintEl.textContent = "Copied!";
-    setTimeout(() => hintEl.textContent = "", 1200);
-  } catch (_) {
-    hintEl.textContent = "Copy failed";
+  window.__lastCopyOk = false;
+
+  // Prefer test shim when present (stable in headless)
+  if (window.__testClipboard && typeof window.__testClipboard.writeText === "function") {
+    await window.__testClipboard.writeText(pwd);
+    window.__lastCopyOk = true;
+  } else if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(pwd);
+    window.__lastCopyOk = true;
   }
+
+  hintEl.textContent = "Copied!";
+  setTimeout(() => (hintEl.textContent = ""), 1200);
 }
 
 $("generate").addEventListener("click", generate);
 $("copy").addEventListener("click", copyPassword);
-lengthEl.addEventListener("change", generate);
+
+modeEl.addEventListener("change", () => {
+  setModeUI();
+  generate();
+});
+
+wordCountEl.addEventListener("change", () => {
+  if (modeEl.value === "words") generate();
+});
+
+lengthEl.addEventListener("change", () => {
+  if (modeEl.value === "length") generate();
+});
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter") generate();
 });
 
 window.addEventListener("load", async () => {
+  setModeUI();
+
+  window.__wordsLoadStarted = true;
   await loadWords();
-  generate();
+  if (window.__wordsLoaded) generate();
 });
 </script>
 </body>
