@@ -161,6 +161,10 @@ button.secondary {
   padding:20px;
   z-index:9999;
 }
+/* Be extra explicit: when the hidden attribute is present, don't render or accept clicks */
+.modalOverlay[hidden]{
+  display:none;
+}
 .modalDialog{
   width:100%;
   max-width:560px;
@@ -696,19 +700,29 @@ document.addEventListener("keydown", (e) => {
 
 
 function openHelp(){
+  // Some browsers can be finicky about the boolean `hidden` attribute.
+  // Toggle both the attribute and an explicit display so the dialog always shows.
   helpOverlayEl.hidden = false;
+  helpOverlayEl.removeAttribute("hidden");
+  helpOverlayEl.style.display = "flex";
   // focus close for accessibility
   helpCloseEl.focus();
 }
 function closeHelp(){
   helpOverlayEl.hidden = true;
+  helpOverlayEl.setAttribute("hidden", "");
+  helpOverlayEl.style.display = "none";
   // return focus to help button
   helpBtnEl.focus();
 }
 
 // Help interactions
 helpBtnEl.addEventListener("click", openHelp);
-helpCloseEl.addEventListener("click", closeHelp);
+helpCloseEl.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeHelp();
+});
 helpOverlayEl.addEventListener("click", (e) => {
   if (e.target === helpOverlayEl) closeHelp();
 });
