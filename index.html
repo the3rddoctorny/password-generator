@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.7.0 -->
+<!-- Password Generator v1.8.0 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -189,6 +189,22 @@ button.secondary {
   />
 </div>
 
+<div class="toggles hidden" id="wordStyleControls" style="text-align:left; margin-top:12px;">
+  <label class="toggleRow" for="titleCase">
+    <input type="checkbox" id="titleCase" checked>
+    Title Case (RocketSilver)
+  </label>
+
+  <label style="display:block; margin-top:10px; font-size:.9em; color:var(--muted);">
+    Separator (Word Count mode)
+  </label>
+  <select id="separator" style="width:100%; padding:10px; border-radius:10px; border:none;">
+    <option value="" selected>None</option>
+    <option value="-">Hyphen (-)</option>
+    <option value="_">Underscore (_)</option>
+    <option value=".">Dot (.)</option>
+  </select>
+</div>
 
     <button id="generate" type="button">Generate</button>
 
@@ -198,7 +214,7 @@ button.secondary {
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.7.0 • loading words...</div>
+    <div class="version" id="version">v1.8.0 • loading words...</div>
   </div>
 </main>
 
@@ -238,6 +254,10 @@ const includeSymbolEl = $("includeSymbol");
 const symbolSetEl = $("symbolSet");
 const customSymbolsEl = $("customSymbols");
 const symbolControlsEl = $("symbolControls");
+const titleCaseEl = $("titleCase");
+const separatorEl = $("separator");
+const wordStyleControlsEl = $("wordStyleControls");
+
 
 function randIndex(max) {
   if (crypto && crypto.getRandomValues) {
@@ -295,6 +315,11 @@ function setModeUI() {
 
   wordCountLabelEl.classList.toggle("hidden", !isWords);
   wordCountEl.classList.toggle("hidden", !isWords);
+
+  // Word styling options apply only to Word Count mode
+  if (wordStyleControlsEl) {
+    wordStyleControlsEl.classList.toggle("hidden", !isWords);
+  }
 }
 
 async function loadWords() {
@@ -304,7 +329,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.7.0 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.8.0 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -317,12 +342,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.7.0 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.8.0 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.7.0 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.8.0 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }
 }
@@ -356,17 +381,34 @@ function generateLengthMode(length, suffix) {
   return ensureUppercase(out);
 }
 
-function generateWordMode(wordCount, suffix) {
+function generateWordMode(wordCount, suffix, suffixParts) {
   const words = [];
   for (let i = 0; i < wordCount; i++) {
-    words.push(pickWord());
+    words.push(applyCase(pickWord()));
   }
 
-  // Capitalize one whole word so we always have an uppercase letter
-  const capIndex = randIndex(words.length);
-  words[capIndex] = words[capIndex][0].toUpperCase() + words[capIndex].slice(1);
+  const sep = (separatorEl && separatorEl.value) ? separatorEl.value : "";
 
-  return ensureUppercase(words.join("") + suffix);
+  if (sep) {
+    // Treat digit/symbol as their own parts for readability
+    const allParts = words.concat(suffixParts || []);
+    return ensureUppercase(allParts.filter(Boolean).join(sep));
+  }
+
+  // No separator: append digit/symbol directly at the end
+  return ensureUppercase(words.join("") + (suffix || ""));
+}
+
+function applyCase(word) {
+  const w = sanitizeWord(word);
+  if (!w) return "";
+  if (!titleCaseEl.checked) return w.toLowerCase();
+  return w[0].toUpperCase() + w.slice(1).toLowerCase();
+}
+
+function joinWords(words) {
+  const sep = separatorEl.value || "";
+  return words.join(sep);
 }
 
 function strengthRating(pwd) {
@@ -383,7 +425,8 @@ function strengthRating(pwd) {
   if (len >= 12 && types >= 3) rating = "Good";
   if (len >= 15 && types === 4) rating = "Strong";
 
-  const modeDetail = (modeEl.value === "words")
+  const isWords = modeEl.value === "words";
+  const modeDetail = isWords
     ? `${parseInt(wordCountEl.value, 10)} words`
     : `${parseInt(lengthEl.value, 10)} chars target`;
 
@@ -392,7 +435,11 @@ function strengthRating(pwd) {
     includeSymbolEl.checked ? "symbol" : "no symbol",
   ].join(", ");
 
-  return `Strength: ${rating} • ${len} chars • ${modeDetail} • ${types}/4 types • ${policy}`;
+  const style = isWords
+    ? ` • ${titleCaseEl.checked ? "Title Case" : "lowercase"} • sep:${(separatorEl.value || "none")}`
+    : "";
+
+  return `Strength: ${rating} • ${len} chars • ${modeDetail} • ${types}/4 types • ${policy}${style}`;
 }
 
 function updateStrength() {
@@ -408,14 +455,19 @@ function generate() {
     return;
   }
 
-  const suffix =
-    (includeDigitEl.checked ? pickDigit() : "") +
-    (includeSymbolEl.checked ? pickSymbol() : "");
+  const digit = includeDigitEl.checked ? pickDigit() : "";
+  const sym = includeSymbolEl.checked ? pickSymbol() : "";
+  const suffix = digit + sym;
 
   const mode = modeEl.value;
   if (mode === "words") {
     const wc = parseInt(wordCountEl.value, 10);
-    passwordEl.textContent = generateWordMode(wc, suffix);
+
+    // If a separator is chosen, keep digit/symbol as their own chunks for readability.
+    const sep = (separatorEl && separatorEl.value) ? separatorEl.value : "";
+    const suffixParts = sep ? [digit, sym].filter(Boolean) : [];
+
+    passwordEl.textContent = generateWordMode(wc, suffix, suffixParts);
     updateStrength();
     return;
   }
@@ -534,6 +586,14 @@ symbolSetEl.addEventListener("change", () => {
 
 customSymbolsEl.addEventListener("input", () => {
   if (includeSymbolEl.checked && symbolSetEl.value === "custom") generate();
+});
+
+titleCaseEl.addEventListener("change", () => {
+  if (modeEl.value === "words") generate();
+});
+
+separatorEl.addEventListener("change", () => {
+  if (modeEl.value === "words") generate();
 });
 
 document.addEventListener("keydown", (e) => {
