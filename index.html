@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.8.2 -->
+<!-- Password Generator v1.9.8.3 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -314,10 +314,10 @@ button.secondary {
       <button id="resetBtn" class="ghost" type="button" title="Reset settings to defaults">Reset</button>
       <button id="helpBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="helpOverlay">Help</button>
     </div>
-<div class="strength" id="strength" aria-live="polite"></div>
-    <div class="hint" id="hint" aria-live="polite"></div>
+<div class="strength" id="strength" aria-live="off"></div>
+    <div class="hint" id="hint" aria-live="polite" role="status" aria-atomic="true"></div>
 
-    <div class="version" id="version">v1.9.8.2 • loading words...</div>
+    <div class="version" id="version">v1.9.8.3 • loading words...</div>
   </div>
 </main>
 
@@ -555,7 +555,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.8.2 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.8.3 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -568,12 +568,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.8.2 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.8.3 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.8.2 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.8.3 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }  finally {
     setGenerateLoading(false);
