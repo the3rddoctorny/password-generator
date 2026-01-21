@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.3 -->
+<!-- Password Generator v1.9.4 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -206,6 +206,7 @@ button.secondary {
   <div class="card">
     <div class="headerRow">
       <h1>Password Generator</h1>
+      <button id="resetBtn" class="ghost" type="button" title="Reset settings to defaults">Reset</button>
       <button id="helpBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="helpOverlay">Help</button>
     </div>
 
@@ -284,7 +285,7 @@ button.secondary {
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.9.3 • loading words...</div>
+    <div class="version" id="version">v1.9.4 • loading words...</div>
   </div>
 </main>
 
@@ -357,6 +358,26 @@ const wordStyleControlsEl = $("wordStyleControls");
 
 // Persist UI settings in localStorage so the app remembers user preferences.
 const SETTINGS_KEY = "pwgen_settings_v1";
+
+let DEFAULT_SETTINGS = null;
+
+function snapshotDefaults() {
+  // Capture the initial UI defaults (what the HTML declares) once.
+  if (!DEFAULT_SETTINGS) DEFAULT_SETTINGS = getSettingsFromUI();
+}
+
+function resetDefaults() {
+  try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {}
+
+  // Restore UI defaults
+  if (DEFAULT_SETTINGS) applySettingsToUI(DEFAULT_SETTINGS);
+
+  setModeUI();
+  refreshSymbolUI();
+  generate();
+  saveSettings();
+}
+
 
 function setSelectValue(selectEl, value) {
   if (!selectEl) return;
@@ -485,7 +506,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.3 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.4 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -498,12 +519,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.3 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.4 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.3 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.4 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }
 }
@@ -781,7 +802,49 @@ document.addEventListener("keydown", (e) => {
 });
 
 
+
+let lastFocusedBeforeHelp = null;
+
+function getHelpDialogEl() {
+  return helpOverlayEl.querySelector(".modalDialog");
+}
+
+function getFocusableElements(container) {
+  if (!container) return [];
+  return Array.from(
+    container.querySelectorAll(
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute("disabled") && el.getAttribute("aria-hidden") !== "true");
+}
+
+function trapFocusInHelp(e) {
+  if (e.key !== "Tab") return;
+  if (helpOverlayEl.hidden) return;
+
+  const dialog = getHelpDialogEl();
+  const focusables = getFocusableElements(dialog);
+  if (!focusables.length) return;
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+
+  if (e.shiftKey) {
+    if (active === first || !dialog.contains(active)) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}
+
 function openHelp(){
+  lastFocusedBeforeHelp = document.activeElement;
   // Some browsers can be finicky about the boolean `hidden` attribute.
   // Toggle both the attribute and an explicit display so the dialog always shows.
   helpOverlayEl.hidden = false;
@@ -794,12 +857,18 @@ function closeHelp(){
   helpOverlayEl.hidden = true;
   helpOverlayEl.setAttribute("hidden", "");
   helpOverlayEl.style.display = "none";
-  // return focus to help button
-  helpBtnEl.focus();
+  // Restore focus to whatever opened the modal
+  if (lastFocusedBeforeHelp && typeof lastFocusedBeforeHelp.focus === "function") {
+    lastFocusedBeforeHelp.focus();
+  } else {
+    helpBtnEl.focus();
+  }
+  lastFocusedBeforeHelp = null;
 }
 
 // Help interactions
 helpBtnEl.addEventListener("click", openHelp);
+document.getElementById("resetBtn").addEventListener("click", resetDefaults);
 helpCloseEl.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -809,11 +878,14 @@ helpOverlayEl.addEventListener("click", (e) => {
   if (e.target === helpOverlayEl) closeHelp();
 });
 document.addEventListener("keydown", (e) => {
-  if (!helpOverlayEl.hidden && e.key === "Escape") closeHelp();
+  if (helpOverlayEl.hidden) return;
+  if (e.key === "Escape") { closeHelp(); return; }
+  trapFocusInHelp(e);
 });
 
 window.addEventListener("load", async () => {
   // Restore prior UI settings before rendering the initial state.
+  snapshotDefaults();
   loadSettings();
   setModeUI();
   window.__wordsLoadStarted = true;
