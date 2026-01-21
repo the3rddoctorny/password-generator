@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.5 -->
+<!-- Password Generator v1.9.6 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -282,7 +282,7 @@ button.secondary {
   </select>
 </div>
 
-    <button id="generate" type="button">Generate</button>
+    <button id="generate" data-label="Generate" type="button" disabled aria-disabled="true">Loading…</button>
 
     <div class="password" id="password" aria-live="polite" role="button" tabindex="0"></div>
     <button id="copy" class="secondary" type="button">Copy</button>
@@ -293,7 +293,7 @@ button.secondary {
 <div class="strength" id="strength" aria-live="polite"></div>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.9.5 • loading words...</div>
+    <div class="version" id="version">v1.9.6 • loading words...</div>
   </div>
 </main>
 
@@ -340,6 +340,21 @@ const FALLBACK_WORDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot',
 let WORDS = [];
 
 const $ = (id) => document.getElementById(id);
+
+function setGenerateLoading(isLoading){
+  const btn = $("generate");
+  if (!btn) return;
+  if (isLoading){
+    btn.disabled = true;
+    btn.setAttribute("aria-disabled", "true");
+    btn.textContent = "Loading…";
+  } else {
+    btn.disabled = false;
+    btn.setAttribute("aria-disabled", "false");
+    btn.textContent = btn.dataset.label || "Generate";
+  }
+}
+
 const passwordEl = $("password");
 const strengthEl = $("strength");
 const hintEl = $("hint");
@@ -513,8 +528,9 @@ async function loadWords() {
     if (Array.isArray(window.WORDS_V1) && window.WORDS_V1.length >= 1024) {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
+  setGenerateLoading(false);
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.5 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.6 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -527,12 +543,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.5 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.6 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.5 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.6 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }
 }
@@ -892,6 +908,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("load", async () => {
+  setGenerateLoading(true);
   // Restore prior UI settings before rendering the initial state.
   snapshotDefaults();
   loadSettings();
