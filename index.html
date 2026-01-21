@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.2 -->
+<!-- Password Generator v1.9.3 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -284,7 +284,7 @@ button.secondary {
     <button id="copy" class="secondary" type="button">Copy</button>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.9.2 • loading words...</div>
+    <div class="version" id="version">v1.9.3 • loading words...</div>
   </div>
 </main>
 
@@ -354,6 +354,66 @@ const helpBtnEl = $("helpBtn");
 
 const wordStyleControlsEl = $("wordStyleControls");
 
+
+// Persist UI settings in localStorage so the app remembers user preferences.
+const SETTINGS_KEY = "pwgen_settings_v1";
+
+function setSelectValue(selectEl, value) {
+  if (!selectEl) return;
+  const v = String(value);
+  const ok = Array.from(selectEl.options).some((opt) => opt.value === v);
+  if (ok) selectEl.value = v;
+}
+
+function getSettingsFromUI() {
+  return {
+    mode: modeEl?.value,
+    length: lengthEl?.value,
+    wordCount: wordCountEl?.value,
+    includeDigit: !!includeDigitEl?.checked,
+    includeSymbol: !!includeSymbolEl?.checked,
+    symbolSet: symbolSetEl?.value,
+    customSymbols: customSymbolsEl?.value || "",
+    titleCase: !!titleCaseEl?.checked,
+    separator: separatorEl?.value,
+  };
+}
+
+function applySettingsToUI(s) {
+  if (!s || typeof s !== "object") return;
+
+  if (typeof s.mode === "string") setSelectValue(modeEl, s.mode);
+  if (typeof s.length === "string" || typeof s.length === "number") setSelectValue(lengthEl, s.length);
+  if (typeof s.wordCount === "string" || typeof s.wordCount === "number") setSelectValue(wordCountEl, s.wordCount);
+
+  if (typeof s.includeDigit === "boolean" && includeDigitEl) includeDigitEl.checked = s.includeDigit;
+  if (typeof s.includeSymbol === "boolean" && includeSymbolEl) includeSymbolEl.checked = s.includeSymbol;
+
+  if (typeof s.symbolSet === "string") setSelectValue(symbolSetEl, s.symbolSet);
+  if (typeof s.customSymbols === "string" && customSymbolsEl) customSymbolsEl.value = s.customSymbols;
+
+  if (typeof s.titleCase === "boolean" && titleCaseEl) titleCaseEl.checked = s.titleCase;
+  if (typeof s.separator === "string") setSelectValue(separatorEl, s.separator);
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(getSettingsFromUI()));
+  } catch (_) {
+    // Ignore storage failures (private mode, blocked storage, etc.)
+  }
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    applySettingsToUI(s);
+  } catch (_) {
+    // Ignore parse/storage errors and keep defaults.
+  }
+}
 
 function randIndex(max) {
   if (crypto && crypto.getRandomValues) {
@@ -425,7 +485,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.2 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.3 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -438,12 +498,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.2 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.3 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.2 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.3 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }
 }
@@ -695,6 +755,25 @@ separatorEl.addEventListener("change", () => {
   if (modeEl.value === "words") generate();
 });
 
+// Persist changes
+[
+  modeEl,
+  lengthEl,
+  wordCountEl,
+  includeDigitEl,
+  includeSymbolEl,
+  symbolSetEl,
+  titleCaseEl,
+  separatorEl,
+].forEach((el) => {
+  if (!el) return;
+  el.addEventListener("change", saveSettings);
+});
+
+if (customSymbolsEl) {
+  customSymbolsEl.addEventListener("input", saveSettings);
+}
+
 document.addEventListener("keydown", (e) => {
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
   if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON") return;
@@ -734,11 +813,15 @@ document.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("load", async () => {
+  // Restore prior UI settings before rendering the initial state.
+  loadSettings();
   setModeUI();
   window.__wordsLoadStarted = true;
   refreshSymbolUI();
   await loadWords();
   generate();
+  // Save once so defaults get stored even on first visit.
+  saveSettings();
 });
 </script>
 </body>
