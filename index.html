@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.7.0 -->
+<!-- Password Generator v1.9.8 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Password Generator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23005fcc'/%3E%3Cpath d='M20 42c6 6 18 6 24 0' fill='none' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='26' r='4' fill='white'/%3E%3Ccircle cx='40' cy='26' r='4' fill='white'/%3E%3C/svg%3E">
 <style>
 :root {
   --bg: #f2f2f7;
@@ -131,13 +132,99 @@ button.secondary {
 .hidden {
   display: none;
 }
+
+.headerRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+  .auxActions{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    margin-top:10px;
+  }
+.headerRow h1{ margin:0; }
+.ghost{
+  background:transparent;
+  border:1px solid var(--secondary);
+  color:var(--accent);
+  padding:8px 12px;
+  border-radius:999px;
+  font-weight:600;
+  cursor:pointer;
+}
+.ghost:hover{ background:var(--secondary); }
+.ghost:focus{ outline:2px solid var(--accent); outline-offset:2px; }
+
+.modalOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:9999;
+}
+/* Be extra explicit: when the hidden attribute is present, don't render or accept clicks */
+.modalOverlay[hidden]{
+  display:none;
+}
+.modalDialog{
+  width:100%;
+  max-width:560px;
+  background:var(--card);
+  color:var(--text);
+  border-radius:16px;
+  box-shadow:0 14px 40px rgba(0,0,0,.25);
+  padding:18px 18px 16px;
+}
+.modalHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.modalHeader h2{
+  font-size:1.05em;
+  margin:0;
+}
+.modalBody{
+  margin-top:10px;
+  color:var(--text);
+}
+.modalBody p{ margin:10px 0; }
+.modalBody ul{
+  margin:8px 0 12px 18px;
+}
+.modalBody li{ margin:6px 0; }
+.smallNote{
+  font-size:.85em;
+  color:var(--muted);
+}
+
+
+  .privacyNote{
+    margin-top:14px;
+    padding:10px 12px;
+    border-radius:12px;
+    background:var(--secondary);
+    color:var(--text);
+    font-size:.92em;
+    line-height:1.35;
+  }
 </style>
 </head>
 
 <body>
 <main>
   <div class="card">
-    <h1>Password Generator</h1>
+    <div class="headerRow">
+      <h1>Password Generator</h1>
+</div>
 
     <label for="mode" id="modeLabel">Mode</label>
     <select id="mode">
@@ -169,13 +256,10 @@ button.secondary {
       Include symbol
     </label>
 
-    <label style="display:flex; gap:10px; align-items:center; margin-top:8px;">
-      <input type="checkbox" id="includeSymbol" checked>
-      Include symbol
-    </label>
-
 <div id="symbolControls" style="margin-top:8px; margin-left:26px;">
-  <label for="symbolSet" style="display:block; font-size:.9em; color:var(--muted); margin-bottom:6px;">Symbol set</label>
+  <label style="display:block; font-size:.9em; color:var(--muted); margin-bottom:6px;">
+    Symbol set
+  </label>
   <select id="symbolSet" style="width:100%; padding:10px; border-radius:10px; border:none;">
     <option value="basic" selected>Basic (!@$?*)</option>
     <option value="extended">Extended (!@$?*+-=)</option>
@@ -192,18 +276,61 @@ button.secondary {
   />
 </div>
 
+<div class="toggles hidden" id="wordStyleControls" style="text-align:left; margin-top:12px;">
+  <label class="toggleRow" for="titleCase">
+    <input type="checkbox" id="titleCase" checked>
+    Title Case (RocketSilver)
+  </label>
 
-    <button id="generate" type="button">Generate</button>
+  <label style="display:block; margin-top:10px; font-size:.9em; color:var(--muted);">
+    Separator (Word Count mode)
+  </label>
+  <select id="separator" style="width:100%; padding:10px; border-radius:10px; border:none;">
+    <option value="" selected>None</option>
+    <option value="-">Hyphen (-)</option>
+    <option value="_">Underscore (_)</option>
+    <option value=".">Dot (.)</option>
+  </select>
+</div>
+
+    <button id="generate" data-label="Generate" type="button" disabled aria-disabled="true">Loading…</button>
 
     <div class="password" id="password" aria-live="polite" role="button" tabindex="0"></div>
-    <div class="strength" id="strength" aria-live="polite"></div>
-
     <button id="copy" class="secondary" type="button">Copy</button>
+    <div class="auxActions" aria-label="Help and settings">
+      <button id="resetBtn" class="ghost" type="button" title="Reset settings to defaults">Reset</button>
+      <button id="helpBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="helpOverlay">Help</button>
+    </div>
+<div class="strength" id="strength" aria-live="polite"></div>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.7.0 • loading words...</div>
+    <div class="version" id="version">v1.9.8 • loading words...</div>
   </div>
 </main>
+
+
+<div id="helpOverlay" class="modalOverlay" hidden>
+  <div class="modalDialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modalHeader">
+      <h2 id="helpTitle">How to use this thing</h2>
+      <p class="privacyNote"><strong>Privacy:</strong> Passwords are generated locally in your browser. Nothing is sent anywhere.</p>
+
+      <button id="helpClose" class="secondary" type="button" aria-label="Close help">Close</button>
+    </div>
+    <div class="modalBody">
+      <p>This generator makes passwords from a word list so they’re easier to remember, while still meeting common “picky website” rules.</p>
+      <ul>
+        <li><strong>Mode</strong>: Use <em>Word count</em> for readable passwords (2–4 full words). Use <em>Exact length</em> when a site demands a specific length.</li>
+        <li><strong>Digits/Symbols</strong>: Toggle <em>Include digit</em> and <em>Include symbol</em>. If symbols are on, choose the allowed symbol set.</li>
+        <li><strong>Title Case & Separator</strong>: In Word count mode you can format words as <em>RocketSilver</em> and optionally add separators like <em>Rocket-Silver-7!</em>.</li>
+        <li><strong>Generate</strong>: Click <em>Generate</em> or press <strong>Enter</strong>.</li>
+        <li><strong>Copy</strong>: Click <em>Copy</em> or click the password itself to copy it. You’ll see “Copied!” confirmation.</li>
+      </ul>
+      <p class="smallNote">Word list status is shown at the bottom (assets vs fallback). If it says fallback, your browser couldn’t load the external list.</p>
+    </div>
+  </div>
+</div>
+
 
 <!-- Prefer script-loaded words (works for file:// and avoids fetch flake) -->
 <script src="./assets/words_v1.js"></script>
@@ -226,6 +353,21 @@ const FALLBACK_WORDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot',
 let WORDS = [];
 
 const $ = (id) => document.getElementById(id);
+
+function setGenerateLoading(isLoading){
+  const btn = $("generate");
+  if (!btn) return;
+  if (isLoading){
+    btn.disabled = true;
+    btn.setAttribute("aria-disabled", "true");
+    btn.textContent = "Loading…";
+  } else {
+    btn.disabled = false;
+    btn.setAttribute("aria-disabled", "false");
+    btn.textContent = btn.dataset.label || "Generate";
+  }
+}
+
 const passwordEl = $("password");
 const strengthEl = $("strength");
 const hintEl = $("hint");
@@ -241,6 +383,94 @@ const includeSymbolEl = $("includeSymbol");
 const symbolSetEl = $("symbolSet");
 const customSymbolsEl = $("customSymbols");
 const symbolControlsEl = $("symbolControls");
+const titleCaseEl = $("titleCase");
+const separatorEl = $("separator");
+const helpOverlayEl = $("helpOverlay");
+const helpCloseEl = $("helpClose");
+const helpBtnEl = $("helpBtn");
+
+const wordStyleControlsEl = $("wordStyleControls");
+
+
+// Persist UI settings in localStorage so the app remembers user preferences.
+const SETTINGS_KEY = "pwgen_settings_v1";
+
+let DEFAULT_SETTINGS = null;
+
+function snapshotDefaults() {
+  // Capture the initial UI defaults (what the HTML declares) once.
+  if (!DEFAULT_SETTINGS) DEFAULT_SETTINGS = getSettingsFromUI();
+}
+
+function resetDefaults() {
+  try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {}
+
+  // Restore UI defaults
+  if (DEFAULT_SETTINGS) applySettingsToUI(DEFAULT_SETTINGS);
+
+  setModeUI();
+  refreshSymbolUI();
+  generate();
+  saveSettings();
+}
+
+
+function setSelectValue(selectEl, value) {
+  if (!selectEl) return;
+  const v = String(value);
+  const ok = Array.from(selectEl.options).some((opt) => opt.value === v);
+  if (ok) selectEl.value = v;
+}
+
+function getSettingsFromUI() {
+  return {
+    mode: modeEl?.value,
+    length: lengthEl?.value,
+    wordCount: wordCountEl?.value,
+    includeDigit: !!includeDigitEl?.checked,
+    includeSymbol: !!includeSymbolEl?.checked,
+    symbolSet: symbolSetEl?.value,
+    customSymbols: customSymbolsEl?.value || "",
+    titleCase: !!titleCaseEl?.checked,
+    separator: separatorEl?.value,
+  };
+}
+
+function applySettingsToUI(s) {
+  if (!s || typeof s !== "object") return;
+
+  if (typeof s.mode === "string") setSelectValue(modeEl, s.mode);
+  if (typeof s.length === "string" || typeof s.length === "number") setSelectValue(lengthEl, s.length);
+  if (typeof s.wordCount === "string" || typeof s.wordCount === "number") setSelectValue(wordCountEl, s.wordCount);
+
+  if (typeof s.includeDigit === "boolean" && includeDigitEl) includeDigitEl.checked = s.includeDigit;
+  if (typeof s.includeSymbol === "boolean" && includeSymbolEl) includeSymbolEl.checked = s.includeSymbol;
+
+  if (typeof s.symbolSet === "string") setSelectValue(symbolSetEl, s.symbolSet);
+  if (typeof s.customSymbols === "string" && customSymbolsEl) customSymbolsEl.value = s.customSymbols;
+
+  if (typeof s.titleCase === "boolean" && titleCaseEl) titleCaseEl.checked = s.titleCase;
+  if (typeof s.separator === "string") setSelectValue(separatorEl, s.separator);
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(getSettingsFromUI()));
+  } catch (_) {
+    // Ignore storage failures (private mode, blocked storage, etc.)
+  }
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    applySettingsToUI(s);
+  } catch (_) {
+    // Ignore parse/storage errors and keep defaults.
+  }
+}
 
 function randIndex(max) {
   if (crypto && crypto.getRandomValues) {
@@ -298,6 +528,11 @@ function setModeUI() {
 
   wordCountLabelEl.classList.toggle("hidden", !isWords);
   wordCountEl.classList.toggle("hidden", !isWords);
+
+  // Word styling options apply only to Word Count mode
+  if (wordStyleControlsEl) {
+    wordStyleControlsEl.classList.toggle("hidden", !isWords);
+  }
 }
 
 async function loadWords() {
@@ -307,7 +542,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.7.0 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.8 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -320,13 +555,15 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.7.0 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.8 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.7.0 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.8 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
+  }  finally {
+    setGenerateLoading(false);
   }
 }
 
@@ -359,17 +596,36 @@ function generateLengthMode(length, suffix) {
   return ensureUppercase(out);
 }
 
-function generateWordMode(wordCount, suffix) {
+function generateWordMode(wordCount, suffix, suffixParts) {
   const words = [];
   for (let i = 0; i < wordCount; i++) {
-    words.push(pickWord());
+    words.push(applyCase(pickWord()));
   }
 
-  // Capitalize one whole word so we always have an uppercase letter
-  const capIndex = randIndex(words.length);
-  words[capIndex] = words[capIndex][0].toUpperCase() + words[capIndex].slice(1);
+  const sep = (separatorEl && separatorEl.value) ? separatorEl.value : "";
 
-  return ensureUppercase(words.join("") + suffix);
+  if (sep) {
+    // Treat digit/symbol as their own parts for readability
+    const allParts = words.concat(suffixParts || []);
+    const out = allParts.filter(Boolean).join(sep);
+    return titleCaseEl.checked ? ensureUppercase(out) : out;
+  }
+
+  // No separator: append digit/symbol directly at the end
+  const out = words.join("") + (suffix || "");
+  return titleCaseEl.checked ? ensureUppercase(out) : out;
+}
+
+function applyCase(word) {
+  const w = sanitizeWord(word);
+  if (!w) return "";
+  if (!titleCaseEl.checked) return w.toLowerCase();
+  return w[0].toUpperCase() + w.slice(1).toLowerCase();
+}
+
+function joinWords(words) {
+  const sep = separatorEl.value || "";
+  return words.join(sep);
 }
 
 function strengthRating(pwd) {
@@ -379,14 +635,16 @@ function strengthRating(pwd) {
   const hasUpper = /[A-Z]/.test(pwd);
   const hasLower = /[a-z]/.test(pwd);
   const hasDigit = /[0-9]/.test(pwd);
-  const hasSymbol = /[*+\-=?!@$]/.test(pwd);
+  const set = currentSymbolSet(); // already exists
+  const hasSymbol = set && pwd.split("").some(ch => set.includes(ch));
   const types = [hasUpper, hasLower, hasDigit, hasSymbol].filter(Boolean).length;
 
   let rating = "Weak";
   if (len >= 12 && types >= 3) rating = "Good";
   if (len >= 15 && types === 4) rating = "Strong";
 
-  const modeDetail = (modeEl.value === "words")
+  const isWords = modeEl.value === "words";
+  const modeDetail = isWords
     ? `${parseInt(wordCountEl.value, 10)} words`
     : `${parseInt(lengthEl.value, 10)} chars target`;
 
@@ -395,7 +653,11 @@ function strengthRating(pwd) {
     includeSymbolEl.checked ? "symbol" : "no symbol",
   ].join(", ");
 
-  return `Strength: ${rating} • ${len} chars • ${modeDetail} • ${types}/4 types • ${policy}`;
+  const style = isWords
+    ? ` • case:${titleCaseEl.checked ? "title" : "lower"} • sep:${(separatorEl.value || "none")}`
+    : "";
+
+  return `Strength: ${rating} • ${len} chars • ${modeDetail} • ${types}/4 types • ${policy}${style}`;
 }
 
 function updateStrength() {
@@ -411,14 +673,19 @@ function generate() {
     return;
   }
 
-  const suffix =
-    (includeDigitEl.checked ? pickDigit() : "") +
-    (includeSymbolEl.checked ? pickSymbol() : "");
+  const digit = includeDigitEl.checked ? pickDigit() : "";
+  const sym = includeSymbolEl.checked ? pickSymbol() : "";
+  const suffix = digit + sym;
 
   const mode = modeEl.value;
   if (mode === "words") {
     const wc = parseInt(wordCountEl.value, 10);
-    passwordEl.textContent = generateWordMode(wc, suffix);
+
+    // If a separator is chosen, keep digit/symbol as their own chunks for readability.
+    const sep = (separatorEl && separatorEl.value) ? separatorEl.value : "";
+    const suffixParts = sep ? [(digit + sym)].filter(Boolean) : [];
+
+    passwordEl.textContent = generateWordMode(wc, suffix, suffixParts);
     updateStrength();
     return;
   }
@@ -539,23 +806,133 @@ customSymbolsEl.addEventListener("input", () => {
   if (includeSymbolEl.checked && symbolSetEl.value === "custom") generate();
 });
 
+titleCaseEl.addEventListener("change", () => {
+  if (modeEl.value === "words") generate();
+});
+
+separatorEl.addEventListener("change", () => {
+  if (modeEl.value === "words") generate();
+});
+
+// Persist changes
+[
+  modeEl,
+  lengthEl,
+  wordCountEl,
+  includeDigitEl,
+  includeSymbolEl,
+  symbolSetEl,
+  titleCaseEl,
+  separatorEl,
+].forEach((el) => {
+  if (!el) return;
+  el.addEventListener("change", saveSettings);
+});
+
+if (customSymbolsEl) {
+  customSymbolsEl.addEventListener("input", saveSettings);
+}
+
 document.addEventListener("keydown", (e) => {
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
   if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON") return;
   if (e.key === "Enter") generate();
 });
 
-window.addEventListener("load", async () => {
-  setModeUI();
-  window.__wordsLoadStarted = true;
-  await loadWords();
-  generate();
+
+
+let lastFocusedBeforeHelp = null;
+
+function getHelpDialogEl() {
+  return helpOverlayEl.querySelector(".modalDialog");
+}
+
+function getFocusableElements(container) {
+  if (!container) return [];
+  return Array.from(
+    container.querySelectorAll(
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => !el.hasAttribute("disabled") && el.getAttribute("aria-hidden") !== "true");
+}
+
+function trapFocusInHelp(e) {
+  if (e.key !== "Tab") return;
+  if (helpOverlayEl.hidden) return;
+
+  const dialog = getHelpDialogEl();
+  const focusables = getFocusableElements(dialog);
+  if (!focusables.length) return;
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+
+  if (e.shiftKey) {
+    if (active === first || !dialog.contains(active)) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}
+
+function openHelp(){
+  lastFocusedBeforeHelp = document.activeElement;
+  // Some browsers can be finicky about the boolean `hidden` attribute.
+  // Toggle both the attribute and an explicit display so the dialog always shows.
+  helpOverlayEl.hidden = false;
+  helpOverlayEl.removeAttribute("hidden");
+  helpOverlayEl.style.display = "flex";
+  // focus close for accessibility
+  helpCloseEl.focus();
+}
+function closeHelp(){
+  helpOverlayEl.hidden = true;
+  helpOverlayEl.setAttribute("hidden", "");
+  helpOverlayEl.style.display = "none";
+  // Restore focus to whatever opened the modal
+  if (lastFocusedBeforeHelp && typeof lastFocusedBeforeHelp.focus === "function") {
+    lastFocusedBeforeHelp.focus();
+  } else {
+    helpBtnEl.focus();
+  }
+  lastFocusedBeforeHelp = null;
+}
+
+// Help interactions
+helpBtnEl.addEventListener("click", openHelp);
+document.getElementById("resetBtn").addEventListener("click", resetDefaults);
+helpCloseEl.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeHelp();
+});
+helpOverlayEl.addEventListener("click", (e) => {
+  if (e.target === helpOverlayEl) closeHelp();
+});
+document.addEventListener("keydown", (e) => {
+  if (helpOverlayEl.hidden) return;
+  if (e.key === "Escape") { closeHelp(); return; }
+  trapFocusInHelp(e);
 });
 
 window.addEventListener("load", async () => {
+  setGenerateLoading(true);
+  // Restore prior UI settings before rendering the initial state.
+  snapshotDefaults();
+  loadSettings();
+  setModeUI();
+  window.__wordsLoadStarted = true;
   refreshSymbolUI();
   await loadWords();
   generate();
+  // Save once so defaults get stored even on first visit.
+  saveSettings();
 });
 </script>
 </body>
