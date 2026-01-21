@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.8.1 -->
+<!-- Password Generator v1.9.8.2 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="description" content="Memorable, word-based password generator with length/word-count modes, optional digits/symbols, copy-to-clipboard, and local-only privacy.">
 <title>Password Generator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -316,7 +317,7 @@ button.secondary {
 <div class="strength" id="strength" aria-live="polite"></div>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.9.8.1 • loading words...</div>
+    <div class="version" id="version">v1.9.8.2 • loading words...</div>
   </div>
 </main>
 
@@ -554,7 +555,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.8.1 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.8.2 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -567,12 +568,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.8.1 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.8.2 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.8.1 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.8.2 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }  finally {
     setGenerateLoading(false);
