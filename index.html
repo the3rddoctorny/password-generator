@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.8.4 -->
+<!-- Password Generator v2.0.0 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -232,6 +232,14 @@ button.secondary {
   border:0;
 }
 
+
+  .subtleNote{
+    margin-top:6px;
+    color:var(--muted);
+    font-size:.9em;
+    line-height:1.35;
+  }
+
 </style>
 </head>
 
@@ -242,7 +250,20 @@ button.secondary {
       <h1>Password Generator</h1>
 </div>
 
-    <label for="mode" id="modeLabel">Mode</label>
+    
+    <label for="preset" id="presetLabel">Site policy preset</label>
+    <select id="preset">
+      <option value="default" selected>Default (memorable)</option>
+      <option value="noSymbols">No symbols</option>
+      <option value="noDigits">No digits</option>
+      <option value="alnum">Letters + digits only</option>
+      <option value="lettersOnly">Letters only</option>
+      <option value="strict">Must include digit + symbol</option>
+      <option value="custom">Custom (manual)</option>
+    </select>
+    <div id="presetHelp" class="subtleNote">Pick a preset to auto‑configure digits/symbols, casing, and separators for picky sites.</div>
+
+<label for="mode" id="modeLabel">Mode</label>
     <select id="mode">
       <option value="length" selected>Exact length</option>
       <option value="words">Word count</option>
@@ -321,7 +342,7 @@ button.secondary {
 <div class="strength" id="strength" aria-live="off"></div>
     <div class="hint" id="hint" aria-live="polite" role="status" aria-atomic="true"></div>
 
-    <div class="version" id="version">v1.9.8.4 • loading words...</div>
+    <div class="version" id="version">v2.0.0 • loading words...</div>
   </div>
 </main>
 
@@ -390,6 +411,7 @@ const strengthEl = $("strength");
 const hintEl = $("hint");
 const versionEl = $("version");
 
+const presetEl = $("preset");
 const modeEl = $("mode");
 const lengthEl = $("length");
 const wordCountEl = $("wordCount");
@@ -441,6 +463,7 @@ function setSelectValue(selectEl, value) {
 
 function getSettingsFromUI() {
   return {
+    preset: presetEl?.value,
     mode: modeEl?.value,
     length: lengthEl?.value,
     wordCount: wordCountEl?.value,
@@ -456,6 +479,7 @@ function getSettingsFromUI() {
 function applySettingsToUI(s) {
   if (!s || typeof s !== "object") return;
 
+  if (typeof s.preset === "string") setSelectValue(presetEl, s.preset);
   if (typeof s.mode === "string") setSelectValue(modeEl, s.mode);
   if (typeof s.length === "string" || typeof s.length === "number") setSelectValue(lengthEl, s.length);
   if (typeof s.wordCount === "string" || typeof s.wordCount === "number") setSelectValue(wordCountEl, s.wordCount);
@@ -532,6 +556,81 @@ function refreshSymbolUI() {
   customSymbolsEl.style.display = isCustom ? "block" : "none";
 }
 
+const PRESETS = {
+  default: {
+    includeDigit: true,
+    includeSymbol: true,
+    symbolSet: "basic",
+    titleCase: true,
+    separator: "",
+  },
+  noSymbols: {
+    includeSymbol: false,
+  },
+  noDigits: {
+    includeDigit: false,
+  },
+  alnum: {
+    includeDigit: true,
+    includeSymbol: false,
+  },
+  lettersOnly: {
+    includeDigit: false,
+    includeSymbol: false,
+  },
+  strict: {
+    includeDigit: true,
+    includeSymbol: true,
+    symbolSet: "basic",
+  },
+};
+
+let __applyingPreset = false;
+
+function markPresetCustom() {
+  if (!presetEl || __applyingPreset) return;
+  if (presetEl.value !== "custom") presetEl.value = "custom";
+}
+
+function applyPreset(key) {
+  if (!presetEl) return;
+  if (!key) return;
+
+  if (key === "custom") {
+    saveSettings();
+    generate();
+    return;
+  }
+
+  const p = PRESETS[key];
+  if (!p) return;
+
+  __applyingPreset = true;
+  try {
+    // Ensure preset select stays in sync
+    presetEl.value = key;
+
+    if (typeof p.includeDigit === "boolean" && includeDigitEl) includeDigitEl.checked = p.includeDigit;
+    if (typeof p.includeSymbol === "boolean" && includeSymbolEl) includeSymbolEl.checked = p.includeSymbol;
+
+    if (typeof p.symbolSet === "string") setSelectValue(symbolSetEl, p.symbolSet);
+    if (typeof p.customSymbols === "string" && customSymbolsEl) customSymbolsEl.value = p.customSymbols;
+
+    if (typeof p.titleCase === "boolean" && titleCaseEl) titleCaseEl.checked = p.titleCase;
+    if (typeof p.separator === "string") setSelectValue(separatorEl, p.separator);
+
+    // Update dependent UI
+    setModeUI();
+    refreshSymbolUI();
+  } finally {
+    __applyingPreset = false;
+  }
+
+  saveSettings();
+  generate();
+}
+
+
 function pickSymbol() {
   const set = currentSymbolSet();
   return set[randIndex(set.length)];
@@ -559,7 +658,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.8.4 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v2.0.0 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -572,12 +671,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.8.4 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v2.0.0 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.8.4 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v2.0.0 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }  finally {
     setGenerateLoading(false);
@@ -800,6 +899,10 @@ modeEl.addEventListener("change", () => {
   generate();
 });
 
+if (presetEl) {
+  presetEl.addEventListener("change", () => applyPreset(presetEl.value));
+}
+
 wordCountEl.addEventListener("change", () => {
   if (modeEl.value === "words") generate();
 });
@@ -845,6 +948,25 @@ separatorEl.addEventListener("change", () => {
   if (!el) return;
   el.addEventListener("change", saveSettings);
 });
+
+[
+  modeEl,
+  lengthEl,
+  wordCountEl,
+  includeDigitEl,
+  includeSymbolEl,
+  symbolSetEl,
+  titleCaseEl,
+  separatorEl,
+].forEach((el) => {
+  if (!el) return;
+  el.addEventListener("change", markPresetCustom);
+});
+
+if (customSymbolsEl) {
+  customSymbolsEl.addEventListener("input", markPresetCustom);
+}
+
 
 if (customSymbolsEl) {
   customSymbolsEl.addEventListener("input", saveSettings);
