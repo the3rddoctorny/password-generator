@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v2.0.0 -->
+<!-- Password Generator v2.1.0 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -240,6 +240,86 @@ button.secondary {
     line-height:1.35;
   }
 
+
+/* Batch + History */
+.batchRow{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-top:10px;
+  text-align:left;
+}
+.batchRow label{
+  width:auto;
+  margin-top:0;
+  white-space:nowrap;
+}
+.batchRow select{
+  margin-top:0;
+}
+.history{
+  margin-top:14px;
+  text-align:left;
+}
+.historyHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:8px;
+}
+.historyHeader h2{
+  font-size:.95em;
+  margin:0;
+}
+.historyList{
+  list-style:none;
+  padding:0;
+  margin:10px 0 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.historyItem{
+  background:var(--secondary);
+  border-radius:12px;
+  padding:10px 10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.historyPwd{
+  font-family:monospace;
+  font-size:.95em;
+  word-break:break-word;
+  flex:1;
+}
+.miniBtns{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.miniBtn{
+  background:transparent;
+  border:1px solid rgba(0,0,0,.15);
+  color:var(--text);
+  padding:6px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  font-size:.9em;
+  width:auto;
+}
+@media (prefers-color-scheme: dark){
+  .miniBtn{ border-color: rgba(255,255,255,.18); }
+}
+.miniBtn:focus{ outline:2px solid var(--accent); outline-offset:2px; }
+.historyNote{
+  margin-top:8px;
+  color:var(--muted);
+  font-size:.85em;
+}
+
 </style>
 </head>
 
@@ -331,6 +411,17 @@ button.secondary {
   </select>
 </div>
 
+
+    <div class="batchRow" aria-label="Batch generation">
+      <label for="batchCount">Generate</label>
+      <select id="batchCount" aria-label="How many passwords to generate in a batch">
+        <option value="1" selected>1 password</option>
+        <option value="5">5 passwords</option>
+        <option value="10">10 passwords</option>
+        <option value="20">20 passwords</option>
+      </select>
+    </div>
+
     <button id="generate" data-label="Generate" type="button" disabled aria-disabled="true">Loading…</button>
 
     <div class="password" id="password" aria-live="polite" role="button" tabindex="0"></div>
@@ -339,10 +430,20 @@ button.secondary {
       <button id="resetBtn" class="ghost" type="button" title="Reset settings to defaults">Reset</button>
       <button id="helpBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="helpOverlay">Help</button>
     </div>
+
+    <section class="history" aria-label="Generated password history">
+      <div class="historyHeader">
+        <h2>History</h2>
+        <button id="clearHistory" class="miniBtn" type="button" title="Clear generated history">Clear</button>
+      </div>
+      <ul id="historyList" class="historyList" aria-label="Recently generated passwords"></ul>
+      <div class="historyNote">History is kept only in this tab (refresh clears it). Use “Copy” or “Use”.</div>
+    </section>
+
 <div class="strength" id="strength" aria-live="off"></div>
     <div class="hint" id="hint" aria-live="polite" role="status" aria-atomic="true"></div>
 
-    <div class="version" id="version">v2.0.0 • loading words...</div>
+    <div class="version" id="version">v2.1.0 • loading words...</div>
   </div>
 </main>
 
@@ -428,6 +529,10 @@ const helpOverlayEl = $("helpOverlay");
 const helpCloseEl = $("helpClose");
 const helpBtnEl = $("helpBtn");
 
+
+const batchCountEl = $("batchCount");
+const historyListEl = $("historyList");
+const clearHistoryEl = $("clearHistory");
 const wordStyleControlsEl = $("wordStyleControls");
 
 
@@ -473,6 +578,7 @@ function getSettingsFromUI() {
     customSymbols: customSymbolsEl?.value || "",
     titleCase: !!titleCaseEl?.checked,
     separator: separatorEl?.value,
+    batchCount: batchCountEl?.value,
   };
 }
 
@@ -492,6 +598,7 @@ function applySettingsToUI(s) {
 
   if (typeof s.titleCase === "boolean" && titleCaseEl) titleCaseEl.checked = s.titleCase;
   if (typeof s.separator === "string") setSelectValue(separatorEl, s.separator);
+  if (typeof s.batchCount === "string" || typeof s.batchCount === "number") setSelectValue(batchCountEl, s.batchCount);
 }
 
 function saveSettings() {
@@ -510,6 +617,101 @@ function loadSettings() {
     applySettingsToUI(s);
   } catch (_) {
     // Ignore parse/storage errors and keep defaults.
+  }
+}
+
+// -------------------- Batch + History (session-only) --------------------
+const HISTORY_MAX = 10;
+let HISTORY = [];
+
+function addToHistory(pwd){
+  const p = (pwd || "").trim();
+  if (!p) return;
+  if (HISTORY.length && HISTORY[0] === p) return;
+  HISTORY.unshift(p);
+  if (HISTORY.length > HISTORY_MAX) HISTORY = HISTORY.slice(0, HISTORY_MAX);
+  renderHistory();
+}
+
+function renderHistory(){
+  if (!historyListEl) return;
+  historyListEl.innerHTML = "";
+
+  if (!HISTORY.length){
+    const li = document.createElement("li");
+    li.className = "historyNote";
+    li.textContent = "No history yet. Generate something.";
+    historyListEl.appendChild(li);
+    return;
+  }
+
+  HISTORY.forEach((pwd, idx) => {
+    const li = document.createElement("li");
+    li.className = "historyItem";
+
+    const span = document.createElement("div");
+    span.className = "historyPwd";
+    span.textContent = pwd;
+
+    const btnWrap = document.createElement("div");
+    btnWrap.className = "miniBtns";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "miniBtn";
+    copyBtn.textContent = "Copy";
+    copyBtn.setAttribute("aria-label", `Copy password ${idx+1} from history`);
+    copyBtn.addEventListener("click", async () => {
+      await copyText(pwd);
+    });
+
+    const useBtn = document.createElement("button");
+    useBtn.type = "button";
+    useBtn.className = "miniBtn";
+    useBtn.textContent = "Use";
+    useBtn.setAttribute("aria-label", `Use password ${idx+1} from history`);
+    useBtn.addEventListener("click", () => {
+      passwordEl.textContent = pwd;
+      updateStrength();
+      hintEl.textContent = "";
+    });
+
+    btnWrap.appendChild(copyBtn);
+    btnWrap.appendChild(useBtn);
+
+    li.appendChild(span);
+    li.appendChild(btnWrap);
+    historyListEl.appendChild(li);
+  });
+}
+
+function clearHistory(){
+  HISTORY = [];
+  renderHistory();
+}
+
+async function copyText(text){
+  const t = (text || "").trim();
+  if (!t) return;
+
+  window.__lastCopyOk = false;
+  try{
+    await writeClipboard(t);
+    window.__lastCopyOk = true;
+    hintEl.textContent = "Copied!";
+    setCopyUI("copied");
+    setTimeout(() => {
+      hintEl.textContent = "";
+      setCopyUI("reset");
+    }, 1200);
+  }catch(e){
+    window.__lastCopyOk = false;
+    hintEl.textContent = "Copy failed";
+    setCopyUI("failed");
+    setTimeout(() => {
+      hintEl.textContent = "";
+      setCopyUI("reset");
+    }, 1500);
   }
 }
 
@@ -658,7 +860,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v2.0.0 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v2.1.0 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -671,12 +873,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v2.0.0 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v2.1.0 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v2.0.0 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v2.1.0 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }  finally {
     setGenerateLoading(false);
@@ -811,6 +1013,31 @@ function generate() {
   updateStrength();
 }
 
+function handleGenerate(){
+  if (!window.__wordsLoaded) {
+    generate();
+    return;
+  }
+
+  const n = parseInt(batchCountEl?.value || "1", 10) || 1;
+
+  if (n <= 1){
+    generate();
+    addToHistory(passwordEl.textContent);
+    return;
+  }
+
+  for (let i = 0; i < n; i++){
+    generate();
+    addToHistory(passwordEl.textContent);
+  }
+
+  hintEl.textContent = `Generated ${n} passwords`;
+  setTimeout(() => {
+    if (hintEl.textContent === `Generated ${n} passwords`) hintEl.textContent = "";
+  }, 1200);
+}
+
 async function writeClipboard(text) {
   // Test shim (headless-friendly)
   if (window.__testClipboard?.writeText) {
@@ -855,34 +1082,10 @@ function setCopyUI(state) {
 async function copyPassword() {
   const pwd = passwordEl.textContent.trim();
   if (!pwd) return;
-
-  window.__lastCopyOk = false;
-
-  try {
-    await writeClipboard(pwd);
-    window.__lastCopyOk = true;
-
-    hintEl.textContent = "Copied!";
-    setCopyUI("copied");
-
-    setTimeout(() => {
-      hintEl.textContent = "";
-      setCopyUI("reset");
-    }, 1200);
-
-  } catch (e) {
-    window.__lastCopyOk = false;
-    hintEl.textContent = "Copy failed";
-    setCopyUI("failed");
-
-    setTimeout(() => {
-      hintEl.textContent = "";
-      setCopyUI("reset");
-    }, 1500);
-  }
+  await copyText(pwd);
 }
 
-$("generate").addEventListener("click", generate);
+$("generate").addEventListener("click", handleGenerate);
 $("copy").addEventListener("click", copyPassword);
 
 // Click-to-copy on the password itself
@@ -944,6 +1147,7 @@ separatorEl.addEventListener("change", () => {
   symbolSetEl,
   titleCaseEl,
   separatorEl,
+  batchCountEl,
 ].forEach((el) => {
   if (!el) return;
   el.addEventListener("change", saveSettings);
@@ -958,6 +1162,7 @@ separatorEl.addEventListener("change", () => {
   symbolSetEl,
   titleCaseEl,
   separatorEl,
+  batchCountEl,
 ].forEach((el) => {
   if (!el) return;
   el.addEventListener("change", markPresetCustom);
@@ -975,7 +1180,7 @@ if (customSymbolsEl) {
 document.addEventListener("keydown", (e) => {
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
   if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON") return;
-  if (e.key === "Enter") generate();
+  if (e.key === "Enter") handleGenerate();
 });
 
 
@@ -1045,6 +1250,8 @@ function closeHelp(){
 
 // Help interactions
 helpBtnEl.addEventListener("click", openHelp);
+if (clearHistoryEl) clearHistoryEl.addEventListener("click", clearHistory);
+
 document.getElementById("resetBtn").addEventListener("click", resetDefaults);
 helpCloseEl.addEventListener("click", (e) => {
   e.preventDefault();
@@ -1069,6 +1276,7 @@ window.addEventListener("load", async () => {
   window.__wordsLoadStarted = true;
   refreshSymbolUI();
   await loadWords();
+  renderHistory();
   generate();
   // Save once so defaults get stored even on first visit.
   saveSettings();
