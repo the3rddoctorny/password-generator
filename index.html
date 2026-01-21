@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.4 -->
+<!-- Password Generator v1.9.5 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -138,6 +138,13 @@ button.secondary {
   justify-content:space-between;
   gap:12px;
 }
+
+  .auxActions{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    margin-top:10px;
+  }
 .headerRow h1{ margin:0; }
 .ghost{
   background:transparent;
@@ -206,9 +213,7 @@ button.secondary {
   <div class="card">
     <div class="headerRow">
       <h1>Password Generator</h1>
-      <button id="resetBtn" class="ghost" type="button" title="Reset settings to defaults">Reset</button>
-      <button id="helpBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="helpOverlay">Help</button>
-    </div>
+</div>
 
     <label for="mode" id="modeLabel">Mode</label>
     <select id="mode">
@@ -280,12 +285,15 @@ button.secondary {
     <button id="generate" type="button">Generate</button>
 
     <div class="password" id="password" aria-live="polite" role="button" tabindex="0"></div>
-    <div class="strength" id="strength" aria-live="polite"></div>
-
     <button id="copy" class="secondary" type="button">Copy</button>
+    <div class="auxActions" aria-label="Help and settings">
+      <button id="resetBtn" class="ghost" type="button" title="Reset settings to defaults">Reset</button>
+      <button id="helpBtn" class="ghost" type="button" aria-haspopup="dialog" aria-controls="helpOverlay">Help</button>
+    </div>
+<div class="strength" id="strength" aria-live="polite"></div>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.9.4 • loading words...</div>
+    <div class="version" id="version">v1.9.5 • loading words...</div>
   </div>
 </main>
 
@@ -506,7 +514,7 @@ async function loadWords() {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.4 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.5 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -519,12 +527,12 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.4 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.5 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.4 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.5 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
   }
 }
