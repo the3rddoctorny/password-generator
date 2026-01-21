@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Password Generator v1.9.6 -->
+<!-- Password Generator v1.9.7 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -293,7 +293,7 @@ button.secondary {
 <div class="strength" id="strength" aria-live="polite"></div>
     <div class="hint" id="hint" aria-live="polite"></div>
 
-    <div class="version" id="version">v1.9.6 • loading words...</div>
+    <div class="version" id="version">v1.9.7 • loading words...</div>
   </div>
 </main>
 
@@ -528,9 +528,8 @@ async function loadWords() {
     if (Array.isArray(window.WORDS_V1) && window.WORDS_V1.length >= 1024) {
       WORDS = window.WORDS_V1.map(sanitizeWord).filter(Boolean);
       window.__wordsLoaded = true;
-  setGenerateLoading(false);
       window.__wordsLoadError = "";
-      versionEl.textContent = `v1.9.6 • wordlist: assets-js (${WORDS.length})`;
+      versionEl.textContent = `v1.9.7 • wordlist: assets-js (${WORDS.length})`;
       return;
     }
 
@@ -543,13 +542,15 @@ async function loadWords() {
     WORDS = data.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = "";
-    versionEl.textContent = `v1.9.6 • wordlist: assets-json (${WORDS.length})`;
+    versionEl.textContent = `v1.9.7 • wordlist: assets-json (${WORDS.length})`;
   } catch (e) {
     WORDS = FALLBACK_WORDS.map(sanitizeWord).filter(Boolean);
     window.__wordsLoaded = true;
     window.__wordsLoadError = String(e);
-    versionEl.textContent = `v1.9.6 • wordlist: fallback (${WORDS.length})`;
+    versionEl.textContent = `v1.9.7 • wordlist: fallback (${WORDS.length})`;
     hintEl.textContent = "Word list failed to load (using fallback)";
+  }  finally {
+    setGenerateLoading(false);
   }
 }
 
