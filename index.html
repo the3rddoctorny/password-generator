@@ -492,7 +492,8 @@ function generateWordMode(wordCount, suffix, suffixParts) {
   }
 
   // No separator: append digit/symbol directly at the end
-  return ensureUppercase(words.join("") + (suffix || ""));
+  const out = words.join("") + (suffix || "");
+  return titleCaseEl.checked ? ensureUppercase(out) : out;
 }
 
 function applyCase(word) {
@@ -514,7 +515,8 @@ function strengthRating(pwd) {
   const hasUpper = /[A-Z]/.test(pwd);
   const hasLower = /[a-z]/.test(pwd);
   const hasDigit = /[0-9]/.test(pwd);
-  const hasSymbol = /[*+\-=?!@$]/.test(pwd);
+  const set = currentSymbolSet(); // already exists
+  const hasSymbol = set && pwd.split("").some(ch => set.includes(ch));
   const types = [hasUpper, hasLower, hasDigit, hasSymbol].filter(Boolean).length;
 
   let rating = "Weak";
@@ -561,7 +563,7 @@ function generate() {
 
     // If a separator is chosen, keep digit/symbol as their own chunks for readability.
     const sep = (separatorEl && separatorEl.value) ? separatorEl.value : "";
-    const suffixParts = sep ? [digit, sym].filter(Boolean) : [];
+    const suffixParts = sep ? [(digit + sym)].filter(Boolean) : [];
 
     passwordEl.textContent = generateWordMode(wc, suffix, suffixParts);
     updateStrength();
