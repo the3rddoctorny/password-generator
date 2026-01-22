@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.1.2] - 2026-01-22
+
+* Added: Export history to CSV
+
 ## [2.1.1] - 2026-01-22
 
 ### Added
