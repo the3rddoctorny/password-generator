@@ -272,6 +272,12 @@ button.secondary {
   font-size:.95em;
   margin:0;
 }
+
+.historyActions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
 .historyList{
   list-style:none;
   padding:0;
@@ -434,7 +440,10 @@ button.secondary {
     <section class="history" aria-label="Generated password history">
       <div class="historyHeader">
         <h2>History</h2>
-        <button id="clearHistory" class="miniBtn" type="button" title="Clear generated history">Clear</button>
+        <div class="historyActions">
+          <button id="exportHistory" class="miniBtn" type="button" title="Export history as CSV">Export CSV</button>
+          <button id="clearHistory" class="miniBtn" type="button" title="Clear generated history">Clear</button>
+        </div>
       </div>
       <ul id="historyList" class="historyList" aria-label="Recently generated passwords"></ul>
       <div class="historyNote">History is kept only in this tab (refresh clears it). Use “Copy” or “Use”.</div>
@@ -533,6 +542,7 @@ const helpBtnEl = $("helpBtn");
 const batchCountEl = $("batchCount");
 const historyListEl = $("historyList");
 const clearHistoryEl = $("clearHistory");
+const exportHistoryEl = $("exportHistory");
 const wordStyleControlsEl = $("wordStyleControls");
 
 
@@ -690,6 +700,49 @@ function clearHistory(){
   renderHistory();
 }
 
+
+
+function exportHistoryCSV(){
+  const rows = (HISTORY || []).slice(); // newest-first
+  if (!rows.length){
+    hintEl.textContent = "No history to export";
+    setTimeout(() => { hintEl.textContent = ""; }, 1200);
+    return;
+  }
+
+  // Build CSV: index,password (RFC4180-ish escaping)
+  const escapeCell = (s) => {
+    const v = String(s ?? "");
+    if (/[",\n\r]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  };
+
+  const lines = [];
+  lines.push("index,password");
+  rows.forEach((pwd, i) => {
+    lines.push(`${i+1},${escapeCell(pwd)}`);
+  });
+
+  const csv = lines.join("\n") + "\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const filename = `password_history_${stamp}.csv`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  hintEl.textContent = `Exported ${rows.length} item${rows.length===1 ? "" : "s"}`;
+  setTimeout(() => { hintEl.textContent = ""; }, 1500);
+}
 async function copyText(text){
   const t = (text || "").trim();
   if (!t) return;
@@ -1262,6 +1315,7 @@ function closeHelp(){
 // Help interactions
 helpBtnEl.addEventListener("click", openHelp);
 if (clearHistoryEl) clearHistoryEl.addEventListener("click", clearHistory);
+if (exportHistoryEl) exportHistoryEl.addEventListener("click", exportHistoryCSV);
 
 document.getElementById("resetBtn").addEventListener("click", resetDefaults);
 helpCloseEl.addEventListener("click", (e) => {
