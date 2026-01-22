@@ -715,6 +715,15 @@ async function copyText(text){
   }
 }
 
+
+/* ===================================================================
+   CORE GENERATOR LOGIC (STABLE)
+   - Stable as of v2.1.x
+   - Changes here MUST be accompanied by updates to:
+     - Selenium E2E tests (tests/)
+     - Axe accessibility tests (tests/test_a11y_axe.py)
+   - Avoid refactors. Prefer small, additive changes behind toggles.
+   =================================================================== */
 function randIndex(max) {
   if (crypto && crypto.getRandomValues) {
     const a = new Uint32Array(1);
@@ -1038,6 +1047,8 @@ function handleGenerate(){
   }, 1200);
 }
 
+
+/* ========================= END CORE LOGIC ========================= */
 async function writeClipboard(text) {
   // Test shim (headless-friendly)
   if (window.__testClipboard?.writeText) {
