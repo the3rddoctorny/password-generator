@@ -1,6 +1,22 @@
 # Changelog
 
-## [2.1.1] - 2026-01-21
+## [2.1.1] - 2026-01-22
+
+### Added
+
+* Selenium + pytest E2E harness (local server fixtures, page object)
+* Negative-path test coverage (custom symbols empty)
+
+### Improved
+
+* Accessibility automation via axe (WCAG A/AA)
+* Core generator logic section marked as stable (freeze markers)
+
+### Fixed
+
+* Ignore macOS .DS_Store and other dev artifacts
+
+## [2.1.0] - 2026-01-21
 
 ### Added
 
