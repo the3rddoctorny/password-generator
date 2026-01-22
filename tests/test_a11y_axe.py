@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.a11y
+
 import json
 from pathlib import Path
 
